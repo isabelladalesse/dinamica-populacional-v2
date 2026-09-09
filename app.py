@@ -79,7 +79,7 @@ PERIMETRO_ESPELHO_AGUA = D_S_ESTIMADO * 2 * np.sqrt(np.pi * AREA_ESPELHO_AGUA)
 
 # Girinos: em vez de uma fração da área do espelho d'água, considera-se uma
 # faixa litorânea estreita ao longo do perímetro (largura entre 0,5 e 1 m,
-# aqui 0,75 m como valor de referência), da qual apenas metade é
+# aqui 0,5 m como valor de referência), da qual apenas 10% é
 # efetivamente ocupada pelos girinos (distribuição não uniforme na margem).
 LARGURA_MARGEM_GIRINO = 0.5     # m — largura da faixa litorânea considerada
 FRACAO_OCUPACAO_GIRINO = 0.10   # fração da faixa efetivamente ocupada
@@ -1048,9 +1048,9 @@ elif pagina == "Aplicação em Várzea das Flores":
         "espelho d'água, **3,76×10⁶ m²**.\n"
         "- **Girinos**: concentram-se nas margens rasas por fatores como temperatura, "
         "oviposição, abrigo e alimento. Consideramos sua ocupação restrita a uma "
-        "**faixa litorânea de 0,75 m de largura** ao longo do perímetro do espelho "
-        "d'água, da qual apenas **50%** é efetivamente ocupada (distribuição não "
-        "uniforme na margem), resultando em **≈1,03×10⁴ m²**.\n"
+        "**faixa litorânea de 0,5 m de largura** ao longo do perímetro do espelho "
+        "d'água, da qual apenas **10%** é efetivamente ocupada (distribuição não "
+        "uniforme na margem), resultando em **≈1,37×10³ m²**.\n"
         "- **Sapos adultos e escorpiões-amarelos**: restritos à faixa de "
         "Área de Preservação Permanente (30 m ao redor do reservatório, "
         "aproximadamente **8,25×10⁵ m²**) pela preferência dos sapos de se manterem "
@@ -1063,7 +1063,7 @@ elif pagina == "Aplicação em Várzea das Flores":
         "represas dendríticas), o que resulta em um perímetro estimado de "
         "≈27.500 m. Esse perímetro é usado tanto para a faixa de APP de "
         "30 m (≈825.000 m², sapos e escorpiões) quanto para a faixa "
-        "litorânea de 0,75 m com 50% de ocupação (≈1,03×10⁴ m², girinos)."
+        "litorânea de 0,5 m com 10% de ocupação (≈1,37×10³ m², girinos)."
     )
 
     st.markdown("---")
