@@ -70,8 +70,23 @@ DEFAULTS = {
 # em uma estimativa de contagem absoluta de indivíduos na represa
 # (k_x = d_x * r_x), sem realimentar o sistema de equações.
 AREA_ESPELHO_AGUA = 3.76e6      # espelho d'água total (habitat do aguapé)
-AREA_GIRINO = 0.10 * AREA_ESPELHO_AGUA        # 10% do espelho d'água (margens)
-AREA_APP = 8.25e5               # faixa de APP de 30 m (Ds = 4), habitat de sapos e escorpiões
+
+# Perímetro estimado pelo Índice de Desenvolvimento de Margem (Shoreline
+# Development Index): D_s = P / (2*sqrt(pi*A))  =>  P = D_s * 2*sqrt(pi*A),
+# adotando-se D_s = 4 (típico de represas dendríticas) => P ≈ 27.500 m.
+D_S_ESTIMADO = 4.0
+PERIMETRO_ESPELHO_AGUA = D_S_ESTIMADO * 2 * np.sqrt(np.pi * AREA_ESPELHO_AGUA)
+
+# Girinos: em vez de uma fração da área do espelho d'água, considera-se uma
+# faixa litorânea estreita ao longo do perímetro (largura entre 0,5 e 1 m,
+# aqui 0,75 m como valor de referência), da qual apenas metade é
+# efetivamente ocupada pelos girinos (distribuição não uniforme na margem).
+LARGURA_MARGEM_GIRINO = 0.5     # m — largura da faixa litorânea considerada
+FRACAO_OCUPACAO_GIRINO = 0.10   # fração da faixa efetivamente ocupada
+AREA_GIRINO = FRACAO_OCUPACAO_GIRINO * PERIMETRO_ESPELHO_AGUA * LARGURA_MARGEM_GIRINO
+
+LARGURA_APP = 30.0               # m — faixa de Área de Preservação Permanente
+AREA_APP = PERIMETRO_ESPELHO_AGUA * LARGURA_APP   # faixa de APP, habitat de sapos e escorpiões
 AREA_HABITAT_VZ = {"A": AREA_ESPELHO_AGUA, "G": AREA_GIRINO, "S": AREA_APP, "E": AREA_APP}
 
 # --------------------------------------------------------------------------
@@ -162,6 +177,29 @@ NOMES = {
 CORES = {"A": "#2e7d32", "G": "#6d4c41", "S": "#1565c0", "E": "#c62828"}
 
 EPS = 1e-14  # evita divisões por zero
+
+_SUPERSCRIPT = str.maketrans("-0123456789", "⁻⁰¹²³⁴⁵⁶⁷⁸⁹")
+
+
+def formata_cientifica(valor, casas=3):
+    """
+    Formata um número em notação científica no estilo "a×10^b" (com o
+    expoente em sobrescrito unicode), em vez do formato "aeb" do Python,
+    para manter a notação usada no restante do texto exibido ao usuário.
+    """
+    if valor == 0:
+        return "0"
+    sinal = "-" if valor < 0 else ""
+    valor = abs(valor)
+    expoente = int(np.floor(np.log10(valor)))
+    mantissa = valor / 10 ** expoente
+    mantissa_str = f"{mantissa:.{casas}f}"
+    if float(mantissa_str) >= 10:
+        mantissa /= 10
+        expoente += 1
+        mantissa_str = f"{mantissa:.{casas}f}"
+    exp_str = str(expoente).translate(_SUPERSCRIPT)
+    return f"{sinal}{mantissa_str}×10{exp_str}"
 
 
 def rotulo(chave):
@@ -368,7 +406,7 @@ def gera_texto(resultados, t_max_anos, texto_convergencia=None, unidades=None):
 
         sufixo = f" {unidade}" if unidade else ""
         if yf < 1e-9:
-            desc_final = f"praticamente se extinguiu (valor final ≈ {yf:.3e}{sufixo})"
+            desc_final = f"praticamente se extinguiu (valor final ≈ {formata_cientifica(yf)}{sufixo})"
         else:
             desc_final = f"se estabilizou em aproximadamente **{yf:.4g}{sufixo}**"
 
@@ -826,22 +864,23 @@ if pagina == "Modelo Matemático":
         "a dinâmica populacional."
     )
 
-    st.markdown("---")
-    st.subheader("Convenção adotada nas Simulações Numéricas")
-    st.markdown(
-        "Na página **Simulações Numéricas**, os resultados são sempre "
-        "mostrados na **forma adimensional**. Assim, "
-        "cada população é sempre mostrada em relação à sua própria "
-        "capacidade suporte, o que permite comparar visualmente a dinâmica "
-        "das quatro espécies na mesma escala, mesmo que suas capacidades "
-        "suporte reais (tabela acima) sejam muito diferentes entre si. Os "
-        "valores reais de $k_a, k_g, k_s, k_e$ continuam sendo usados "
-        "internamente para calcular corretamente os parâmetros "
-        "adimensionais do sistema ($\\bar{k}, \\bar{\\alpha}, \\bar{\\beta}, "
-        "\\bar{\\theta}$). A aplicação do modelo com valores absolutos de "
-        "população, obtidos a partir de áreas de habitat reais, é tratada "
-        "separadamente na página **Aplicação em Várzea das Flores**."
-    )
+    
+    # st.markdown("---")
+    # st.subheader("Convenção adotada nas Simulações Numéricas")
+    # st.markdown(
+        # "Na página **Simulações Numéricas**, os resultados são sempre "
+        # "mostrados na **forma adimensional**. Assim, "
+        # "cada população é sempre mostrada em relação à sua própria "
+        # "capacidade suporte, o que permite comparar visualmente a dinâmica "
+        # "das quatro espécies na mesma escala, mesmo que suas capacidades "
+        # "suporte reais (tabela acima) sejam muito diferentes entre si. Os "
+        # "valores reais de $k_a, k_g, k_s, k_e$ continuam sendo usados "
+        # "internamente para calcular corretamente os parâmetros "
+        # "adimensionais do sistema ($\\bar{k}, \\bar{\\alpha}, \\bar{\\beta}, "
+        # "\\bar{\\theta}$). A aplicação do modelo com valores absolutos de "
+        # "população, obtidos a partir de áreas de habitat reais, é tratada "
+        # "separadamente na página **Aplicação em Várzea das Flores**."
+    #)
 
 # ==========================================================================
 # PÁGINA 2 — COMO O CÓDIGO FUNCIONA
@@ -854,7 +893,7 @@ elif pagina == "Como o Código Funciona":
         "executa, o que acontece depois que você clica em **Rodar simulação**. "
         "As fórmulas usadas (pontos de equilíbrio, condições de existência, "
         "Jacobiano etc.) foram deduzidas previamente a partir do modelo "
-        "matemático — o código apenas as implementa e resolve numericamente."
+        "matemático, o código apenas as implementa e resolve numericamente."
     )
 
     st.markdown("---")
@@ -1002,21 +1041,16 @@ elif pagina == "Aplicação em Várzea das Flores":
 
     st.subheader("Áreas de habitat na represa")
     st.markdown(
-        "O modelo foi inteiramente pensado em termos de "
-        "**densidade** (indivíduos/m²), o que permite o cálculo com densidades diferentes "
-        "($n_g S$ na equação de $G$, $\\delta G$ na de $S$, $\\beta S$ na de $E$) "
-        "mantendo a integridade dimensional "
-        "do modelo. Por isso, a simulação abaixo usa os valores padrão adotados para oa parâmetros. "
-        "As áreas abaixo são usadas **depois** de rodar a simulação, "
-        "para transformar a densidade final estimada em uma contagem "
-        "aproximada de indivíduos na represa (não entram nas equações):"
+        "Internamente, o modelo usa os valores padrão adotados para os parâmetros de região de habitat para cada população:"
     )
     st.markdown(
         "- **Aguapés**: flutuam livremente sobre toda a superfície. Sua área de ocupação corresponde ao "
         "espelho d'água, **3,76×10⁶ m²**.\n"
         "- **Girinos**: concentram-se nas margens rasas por fatores como temperatura, "
-        "oviposição, abrigo e alimento. Consideramos sua ocupação em **10% do espelho d'água** "
-        "(**3,76×10⁵ m²**).\n"
+        "oviposição, abrigo e alimento. Consideramos sua ocupação restrita a uma "
+        "**faixa litorânea de 0,75 m de largura** ao longo do perímetro do espelho "
+        "d'água, da qual apenas **50%** é efetivamente ocupada (distribuição não "
+        "uniforme na margem), resultando em **≈1,03×10⁴ m²**.\n"
         "- **Sapos adultos e escorpiões-amarelos**: restritos à faixa de "
         "Área de Preservação Permanente (30 m ao redor do reservatório, "
         "aproximadamente **8,25×10⁵ m²**) pela preferência dos sapos de se manterem "
@@ -1027,16 +1061,16 @@ elif pagina == "Aplicação em Várzea das Flores":
         "estimado pelo Índice de Desenvolvimento de Margem "
         r"($D_s = P / (2\sqrt{\pi A})$), adotando-se $D_s = 4$ (típico de "
         "represas dendríticas), o que resulta em um perímetro estimado de "
-        "27.500 m e, portanto, em uma faixa de APP de 30 m com área de "
-        "825.000 m²."
+        "≈27.500 m. Esse perímetro é usado tanto para a faixa de APP de "
+        "30 m (≈825.000 m², sapos e escorpiões) quanto para a faixa "
+        "litorânea de 0,75 m com 50% de ocupação (≈1,03×10⁴ m², girinos)."
     )
 
     st.markdown("---")
     st.subheader("Simulação — Várzea das Flores")
     st.markdown(
-        "Os campos abaixo já vêm preenchidos com os valores da Tabela 2 "
-        "(em densidade, indivíduos/m² — igual à página de Simulações "
-        "Numéricas). Ajuste se desejar e clique em **Rodar simulação**."
+        "Os campos abaixo já vêm preenchidos com os valores da Tabela 2."
+        " Ajuste se desejar e clique em **Rodar simulação**."
     )
 
     st.markdown("**Densidades iniciais**")
@@ -1063,24 +1097,23 @@ elif pagina == "Aplicação em Várzea das Flores":
             A0_vz = st.number_input("$A_0$ — Aguapés (aguapés/m²)", min_value=0.0,
                                      value=st.session_state.get("A0_vz", 0.30 * DEFAULTS["k_a"]),
                                      format="%.4g", key="A0_vz")
+            st.caption(f"≈ {A0_vz / k_a_vz_atual * 100:.4g}% de $d_a$")
         with v2:
             G0_vz = st.number_input("$G_0$ — Girinos (girinos/m²)", min_value=0.0,
                                      value=st.session_state.get("G0_vz", 0.35 * DEFAULTS["k_g"]),
                                      format="%.4g", key="G0_vz")
+            st.caption(f"≈ {G0_vz / k_g_vz_atual * 100:.4g}% de $d_g$")
         with v3:
             S0_vz = st.number_input("$S_0$ — Sapos (sapos/m²)", min_value=0.0,
                                      value=st.session_state.get("S0_vz", 0.40 * DEFAULTS["k_s"]),
                                      format="%.4g", key="S0_vz")
+            st.caption(f"≈ {S0_vz / k_s_vz_atual * 100:.4g}% de $d_s$")
         with v4:
             E0_vz = st.number_input("$E_0$ — Escorpiões (escorpiões/m²)", min_value=0.0,
                                      value=st.session_state.get("E0_vz", 0.20 * DEFAULTS["k_e"]),
                                      format="%.4g", key="E0_vz")
+            st.caption(f"≈ {E0_vz / k_e_vz_atual * 100:.4g}% de $d_e$")
     else:
-        st.caption(
-            "Densidade inicial de cada espécie como porcentagem da sua "
-            "densidade máxima $d_x$ (definida no expander \"Parâmetros do "
-            "modelo\", abaixo). Ex.: 30% significa $A_0 = 0{,}30 \\times d_a$."
-        )
         v1, v2, v3, v4 = st.columns(4)
         with v1:
             pct_A0_vz = st.number_input("$A_0$ — Aguapés (% de $d_a$)",
@@ -1197,7 +1230,7 @@ elif pagina == "Aplicação em Várzea das Flores":
             "Para permitir a comparação visual entre as quatro espécies "
             "com capacidades suporte diferentes, cada gráfico abaixo "
             "expressa a população em relação à própria capacidade suporte "
-            "da espécie (teto em 1)."
+            "da espécie, variando de 0 a 1."
         )
         fig_vz_rel, axs_vz_rel = plt.subplots(2, 2, figsize=(12, 8))
         for ax, chave in zip(axs_vz_rel.flat, ordem_vz):
@@ -1221,12 +1254,11 @@ elif pagina == "Aplicação em Várzea das Flores":
         fig_vz_rel.tight_layout()
         st.pyplot(fig_vz_rel)
 
-        st.subheader("Resultados — forma dimensional (população absoluta)")
+        st.subheader("Resultados — forma dimensional")
         st.caption(
             "Mesma trajetória acima, convertida em número absoluto de "
-            "indivíduos: densidade × área real de habitat na represa "
-            "(cada gráfico numa escala própria, já que as populações reais "
-            "diferem em várias ordens de grandeza)."
+            "indivíduos. Cada gráfico numa escala própria, já que as populações reais "
+            "diferem em densidade."
         )
         fig_vz_abs, axs_vz_abs = plt.subplots(2, 2, figsize=(12, 8))
         for ax, chave in zip(axs_vz_abs.flat, ordem_vz):
@@ -1269,23 +1301,21 @@ else:
     st.title("Simulações Numéricas")
 
     st.markdown(
-        "Preencha a densidade inicial e a área de cada população nos "
-        "blocos abaixo, ajuste a densidade máxima e os demais parâmetros "
-        "do modelo nos expanders (a explicação de cada um está na página "
+        "Preencha as condições iniciais e a área de cada população nos "
+        "blocos abaixo, ajuste os demais parâmetros "
+        "do modelo abaixo (a explicação de cada um está na página "
         "**Modelo Matemático**, no menu lateral) e clique em **Rodar "
         "simulação**."
     )
     st.markdown(
-        "A capacidade suporte de cada espécie ($k_x$) é calculada a "
-        "partir da densidade máxima ($d_x$, indivíduos/m², Tabela 2) e da "
-        "área informada ($r_x$): $k_x = d_x \\times r_x$. Internamente, o "
-        "sistema é sempre resolvido na forma **adimensional** (a densidade "
-        "inicial informada é dividida por $d_x$ antes de integrar). Os "
+        "A capacidade suporte de cada espécie é calculada a "
+        "partir da densidade máxima e da "
+        "área informada. \\ Internamente, o "
+        "sistema é sempre resolvido na forma **adimensional**. Os "
         "resultados são então apresentados em dois formatos: **adimensional** "
-        "(cada população em relação à própria capacidade suporte, teto em "
-        "1 — o que permite comparar as quatro espécies na mesma escala) e "
-        "**dimensional** (a mesma trajetória multiplicada por $k_x$, em "
-        "número absoluto de indivíduos)."
+        "(cada população em relação à própria capacidade suporte, o que permite"
+        " comparar as quatro espécies na mesma escala) e "
+        "**dimensional** (a visão da trajetória em número absoluto de indivíduos)."
     )
 
     st.subheader("Densidade inicial de cada população")
@@ -1306,85 +1336,75 @@ else:
     d_e_atual = st.session_state.get("d_e", DEFAULTS["k_e"])
 
     if modo_inicial == MODO_DENSIDADE:
-        st.caption(
-            "Densidade de cada espécie (indivíduos/m²) no início da "
-            "simulação."
-        )
         c1, c2, c3, c4 = st.columns(4)
         with c1:
-            A0 = st.number_input("$A_0$ — Aguapés (aguapés/m²)",
+            A0 = st.number_input("$A_0$: Aguapés (aguapés/m²)",
                                   min_value=0.0,
                                   value=st.session_state.get("A0", DENSIDADE_INICIAL_PADRAO["A"]),
                                   format="%.6g", key="A0")
+            st.caption(f"≈ {A0 / d_a_atual * 100:.4g}% de $d_a$")
         with c2:
-            G0 = st.number_input("$G_0$ — Girinos (girinos/m²)",
+            G0 = st.number_input("$G_0$: Girinos (girinos/m²)",
                                   min_value=0.0,
                                   value=st.session_state.get("G0", DENSIDADE_INICIAL_PADRAO["G"]),
                                   format="%.6g", key="G0")
+            st.caption(f"≈ {G0 / d_g_atual * 100:.4g}% de $d_g$")
         with c3:
-            S0 = st.number_input("$S_0$ — Sapos adultos (sapos/m²)",
+            S0 = st.number_input("$S_0$: Sapos adultos (sapos/m²)",
                                   min_value=0.0,
                                   value=st.session_state.get("S0", DENSIDADE_INICIAL_PADRAO["S"]),
                                   format="%.6g", key="S0")
+            st.caption(f"≈ {S0 / d_s_atual * 100:.4g}% de $d_s$")
         with c4:
-            E0 = st.number_input("$E_0$ — Escorpiões (escorpiões/m²)",
+            E0 = st.number_input("$E_0$: Escorpiões (escorpiões/m²)",
                                   min_value=0.0,
                                   value=st.session_state.get("E0", DENSIDADE_INICIAL_PADRAO["E"]),
                                   format="%.6g", key="E0")
+            st.caption(f"≈ {E0 / d_e_atual * 100:.4g}% de $d_e$")
     else:
-        st.caption(
-            "Densidade inicial de cada espécie como porcentagem da sua "
-            "densidade máxima $d_x$ (definida no expander \"Parâmetros do "
-            "modelo\", abaixo). Ex.: 30% significa $A_0 = 0{,}30 \\times d_a$."
-        )
         c1, c2, c3, c4 = st.columns(4)
         with c1:
-            pct_A0 = st.number_input("$A_0$ — Aguapés (% de $d_a$)",
+            pct_A0 = st.number_input("$A_0$: Aguapés (% de $d_a$)",
                                       min_value=0.0, max_value=100.0,
                                       value=st.session_state.get("pct_A0", FRACOES_PADRAO_SIM["A"] * 100),
                                       format="%.4g", key="pct_A0")
             A0 = pct_A0 / 100 * d_a_atual
             st.caption(f"≈ {A0:.4g} aguapés/m²")
         with c2:
-            pct_G0 = st.number_input("$G_0$ — Girinos (% de $d_g$)",
+            pct_G0 = st.number_input("$G_0$: Girinos (% de $d_g$)",
                                       min_value=0.0, max_value=100.0,
                                       value=st.session_state.get("pct_G0", FRACOES_PADRAO_SIM["G"] * 100),
                                       format="%.4g", key="pct_G0")
             G0 = pct_G0 / 100 * d_g_atual
             st.caption(f"≈ {G0:.4g} girinos/m²")
         with c3:
-            pct_S0 = st.number_input("$S_0$ — Sapos adultos (% de $d_s$)",
+            pct_S0 = st.number_input("$S_0$: Sapos adultos (% de $d_s$)",
                                       min_value=0.0, max_value=100.0,
                                       value=st.session_state.get("pct_S0", FRACOES_PADRAO_SIM["S"] * 100),
                                       format="%.4g", key="pct_S0")
             S0 = pct_S0 / 100 * d_s_atual
             st.caption(f"≈ {S0:.4g} sapos/m²")
         with c4:
-            pct_E0 = st.number_input("$E_0$ — Escorpiões (% de $d_e$)",
+            pct_E0 = st.number_input("$E_0$: Escorpiões (% de $d_e$)",
                                       min_value=0.0, max_value=100.0,
                                       value=st.session_state.get("pct_E0", FRACOES_PADRAO_SIM["E"] * 100),
                                       format="%.4g", key="pct_E0")
             E0 = pct_E0 / 100 * d_e_atual
             st.caption(f"≈ {E0:.4g} escorpiões/m²")
 
-    st.subheader("Área total de habitat — $r_x$")
-    st.caption(
-        "Área considerada para cada espécie (m²). Junto com a densidade "
-        "máxima $d_x$ (expander abaixo), define a capacidade suporte "
-        "$k_x = d_x \\times r_x$ dessa população."
-    )
+    st.subheader("Área total de habitat")
     a1, a2, a3, a4 = st.columns(4)
     with a1:
-        r_a = st.number_input("$r_a$ — Região de habitat de aguapés (m²)", min_value=1e-9,
+        r_a = st.number_input("$r_a$: Região de habitat de aguapés (m²)", min_value=1e-9,
                                value=AREAS_PADRAO_SIM["A"], format="%.6g", key="r_a")
     with a2:
-        r_g = st.number_input("$r_g$ — Região de habitat de girinos (m²)", min_value=1e-9,
+        r_g = st.number_input("$r_g$: Região de habitat de girinos (m²)", min_value=1e-9,
                                value=AREAS_PADRAO_SIM["G"], format="%.6g", key="r_g")
     with a3:
-        r_s = st.number_input("$r_s$ — Região de habitat de sapos adultos (m²)", min_value=1e-9,
+        r_s = st.number_input("$r_s$: Região de habitat de sapos (m²)", min_value=1e-9,
                                value=AREAS_PADRAO_SIM["S"], format="%.6g", key="r_s")
     with a4:
-        r_e = st.number_input("$r_e$ — Região de habitat de escorpiões (m²)", min_value=1e-9,
+        r_e = st.number_input("$r_e$: Região de habitat de escorpiões (m²)", min_value=1e-9,
                                value=AREAS_PADRAO_SIM["E"], format="%.6g", key="r_e")
 
     with st.expander("Sugestões de cenários iniciais"):
@@ -1561,9 +1581,8 @@ else:
         st.subheader("Resultados — forma dimensional (população absoluta)")
         st.caption(
             "Mesma trajetória acima, convertida em número absoluto de "
-            "indivíduos ($k_x = d_x \\times r_x$); cada gráfico numa escala "
-            "própria, já que as capacidades suporte reais diferem em "
-            "várias ordens de grandeza."
+            "indivíduos; cada gráfico em uma escala "
+            "própria, já que as capacidades suporte reais diferem."
         )
         fig_abs, axs_abs = plt.subplots(2, 2, figsize=(12, 8))
         for ax, chave in zip(axs_abs.flat, ordem):
@@ -1592,8 +1611,9 @@ else:
         st.markdown(gera_texto(resultados, t_max, texto_convergencia, unidades=UNITS_ABS))
 
         st.caption(
-            f"Capacidade suporte calculada ($k_x = d_x \\times r_x$): "
-            f"**{k_a_abs:,.4g}** aguapés ($k_a$), **{k_g_abs:,.4g}** "
-            f"girinos ($k_g$), **{k_s_abs:,.4g}** sapos adultos ($k_s$) e "
-            f"**{k_e_abs:,.4g}** escorpiões ($k_e$)."
+            f"Capacidade suporte calculada: "
+            f"$k_a$=**{k_a_abs:,.4g}** aguapés,"
+            f" $k_g$=**{k_g_abs:,.4g}** girinos,"
+            f" $k_s$=**{k_s_abs:,.4g}** sapos,"
+            f" $k_e$=**{k_e_abs:,.4g}** escorpiões."
         )
