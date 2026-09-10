@@ -48,7 +48,7 @@ DEFAULTS = {
     "mu_a": 0.0,       # 1/ano (não fornecido na literatura -> padrão 0)
     "mu_s": 0.13,      # 1/ano
     "delta": 5.0e-3,   # 1/ano
-    "alpha": 15.0,     # aguapés/m²
+    "alpha": 5.0,      # aguapés/m²
     "beta": 0.1,       # (?)
     "theta": 3.4e-2,   # escorpiões/m² (20% de k_e, valor atualizado da Tabela 2)
 }
@@ -79,7 +79,7 @@ PERIMETRO_ESPELHO_AGUA = D_S_ESTIMADO * 2 * np.sqrt(np.pi * AREA_ESPELHO_AGUA)
 
 # Girinos: em vez de uma fração da área do espelho d'água, considera-se uma
 # faixa litorânea estreita ao longo do perímetro (largura entre 0,5 e 1 m,
-# aqui 0,5 m como valor de referência), da qual apenas 10% é
+# aqui 0,75 m como valor de referência), da qual apenas metade é
 # efetivamente ocupada pelos girinos (distribuição não uniforme na margem).
 LARGURA_MARGEM_GIRINO = 0.5     # m — largura da faixa litorânea considerada
 FRACAO_OCUPACAO_GIRINO = 0.10   # fração da faixa efetivamente ocupada
@@ -220,16 +220,16 @@ CENARIOS_INICIAIS = {
     "Início da invasão de aguapés": {
         # já na forma adimensional: valores diretamente em relação à
         # capacidade suporte de cada espécie
-        "A0": 0.30,
-        "G0": 0.35,
-        "S0": 0.40,
-        "E0": 0.20,
+        "A0": 0.035,
+        "G0": 0.07,
+        "S0": 0.004,
+        "E0": 0.02,
         "desc": (
-            "Os aguapés começam a se estabelecer no ambiente. A redução "
-            "de luz e oxigênio já compromete levemente o desenvolvimento "
-            "larval dos girinos, e a população de sapos adultos começa a "
-            "sentir o efeito, com leve crescimento da população de "
-            "escorpiões."
+            "Os aguapés começam a se estabelecer no ambiente, ainda em "
+            "densidade baixa. A redução de luz e oxigênio já compromete "
+            "levemente o desenvolvimento larval dos girinos, e a "
+            "população de sapos adultos começa a sentir o efeito, com "
+            "leve crescimento da população de escorpiões."
         ),
     },
     "Invasão severa": {
@@ -1048,9 +1048,9 @@ elif pagina == "Aplicação em Várzea das Flores":
         "espelho d'água, **3,76×10⁶ m²**.\n"
         "- **Girinos**: concentram-se nas margens rasas por fatores como temperatura, "
         "oviposição, abrigo e alimento. Consideramos sua ocupação restrita a uma "
-        "**faixa litorânea de 0,5 m de largura** ao longo do perímetro do espelho "
-        "d'água, da qual apenas **10%** é efetivamente ocupada (distribuição não "
-        "uniforme na margem), resultando em **≈1,37×10³ m²**.\n"
+        "**faixa litorânea de 0,75 m de largura** ao longo do perímetro do espelho "
+        "d'água, da qual apenas **50%** é efetivamente ocupada (distribuição não "
+        "uniforme na margem), resultando em **≈1,03×10⁴ m²**.\n"
         "- **Sapos adultos e escorpiões-amarelos**: restritos à faixa de "
         "Área de Preservação Permanente (30 m ao redor do reservatório, "
         "aproximadamente **8,25×10⁵ m²**) pela preferência dos sapos de se manterem "
@@ -1063,7 +1063,7 @@ elif pagina == "Aplicação em Várzea das Flores":
         "represas dendríticas), o que resulta em um perímetro estimado de "
         "≈27.500 m. Esse perímetro é usado tanto para a faixa de APP de "
         "30 m (≈825.000 m², sapos e escorpiões) quanto para a faixa "
-        "litorânea de 0,5 m com 10% de ocupação (≈1,37×10³ m², girinos)."
+        "litorânea de 0,75 m com 50% de ocupação (≈1,03×10⁴ m², girinos)."
     )
 
     st.markdown("---")
@@ -1080,81 +1080,91 @@ elif pagina == "Aplicação em Várzea das Flores":
         horizontal=True, key="modo_inicial_vz",
     )
 
-    # capacidade suporte / densidade máxima (k_a_vz etc.) atualmente
-    # definida pelo usuário no expander "Parâmetros do modelo" abaixo —
-    # lida via session_state porque, na ordem do script, esse expander só
-    # é criado mais adiante; o valor aqui já reflete a última interação
-    # do usuário (ou o padrão da Tabela 2, se ele ainda não tiver mexido
-    # no campo).
-    k_a_vz_atual = st.session_state.get("k_a_vz", DEFAULTS["k_a"])
-    k_g_vz_atual = st.session_state.get("k_g_vz", DEFAULTS["k_g"])
-    k_s_vz_atual = st.session_state.get("k_s_vz", DEFAULTS["k_s"])
-    k_e_vz_atual = st.session_state.get("k_e_vz", DEFAULTS["k_e"])
+    # densidade máxima (d_a_vz etc.) atualmente definida pelo usuário no
+    # expander "Parâmetros do modelo" abaixo — lida via session_state
+    # porque, na ordem do script, esse expander só é criado mais adiante;
+    # o valor aqui já reflete a última interação do usuário (ou o padrão
+    # da Tabela 2, se ele ainda não tiver mexido no campo).
+    d_a_vz_atual = st.session_state.get("d_a_vz", DEFAULTS["k_a"])
+    d_g_vz_atual = st.session_state.get("d_g_vz", DEFAULTS["k_g"])
+    d_s_vz_atual = st.session_state.get("d_s_vz", DEFAULTS["k_s"])
+    d_e_vz_atual = st.session_state.get("d_e_vz", DEFAULTS["k_e"])
 
     if modo_inicial_vz == MODO_DENSIDADE:
         v1, v2, v3, v4 = st.columns(4)
         with v1:
-            A0_vz = st.number_input("$A_0$ — Aguapés (aguapés/m²)", min_value=0.0,
+            A0_vz = st.number_input("$A_0$: Aguapés (aguapés/m²)", min_value=0.0,
                                      value=st.session_state.get("A0_vz", 0.30 * DEFAULTS["k_a"]),
                                      format="%.4g", key="A0_vz")
-            st.caption(f"≈ {A0_vz / k_a_vz_atual * 100:.4g}% de $d_a$")
+            st.caption(f"≈ {A0_vz / d_a_vz_atual * 100:.4g}% de $d_a$")
         with v2:
-            G0_vz = st.number_input("$G_0$ — Girinos (girinos/m²)", min_value=0.0,
+            G0_vz = st.number_input("$G_0$: Girinos (girinos/m²)", min_value=0.0,
                                      value=st.session_state.get("G0_vz", 0.35 * DEFAULTS["k_g"]),
                                      format="%.4g", key="G0_vz")
-            st.caption(f"≈ {G0_vz / k_g_vz_atual * 100:.4g}% de $d_g$")
+            st.caption(f"≈ {G0_vz / d_g_vz_atual * 100:.4g}% de $d_g$")
         with v3:
-            S0_vz = st.number_input("$S_0$ — Sapos (sapos/m²)", min_value=0.0,
+            S0_vz = st.number_input("$S_0$: Sapos (sapos/m²)", min_value=0.0,
                                      value=st.session_state.get("S0_vz", 0.40 * DEFAULTS["k_s"]),
                                      format="%.4g", key="S0_vz")
-            st.caption(f"≈ {S0_vz / k_s_vz_atual * 100:.4g}% de $d_s$")
+            st.caption(f"≈ {S0_vz / d_s_vz_atual * 100:.4g}% de $d_s$")
         with v4:
-            E0_vz = st.number_input("$E_0$ — Escorpiões (escorpiões/m²)", min_value=0.0,
+            E0_vz = st.number_input("$E_0$: Escorpiões (escorpiões/m²)", min_value=0.0,
                                      value=st.session_state.get("E0_vz", 0.20 * DEFAULTS["k_e"]),
                                      format="%.4g", key="E0_vz")
-            st.caption(f"≈ {E0_vz / k_e_vz_atual * 100:.4g}% de $d_e$")
+            st.caption(f"≈ {E0_vz / d_e_vz_atual * 100:.4g}% de $d_e$")
     else:
         v1, v2, v3, v4 = st.columns(4)
         with v1:
-            pct_A0_vz = st.number_input("$A_0$ — Aguapés (% de $d_a$)",
+            pct_A0_vz = st.number_input("$A_0$: Aguapés (% de $d_a$)",
                                          min_value=0.0, max_value=100.0,
                                          value=st.session_state.get("pct_A0_vz", 30.0),
                                          format="%.4g", key="pct_A0_vz")
-            A0_vz = pct_A0_vz / 100 * k_a_vz_atual
+            A0_vz = pct_A0_vz / 100 * d_a_vz_atual
             st.caption(f"≈ {A0_vz:.4g} aguapés/m²")
         with v2:
-            pct_G0_vz = st.number_input("$G_0$ — Girinos (% de $d_g$)",
+            pct_G0_vz = st.number_input("$G_0$: Girinos (% de $d_g$)",
                                          min_value=0.0, max_value=100.0,
                                          value=st.session_state.get("pct_G0_vz", 35.0),
                                          format="%.4g", key="pct_G0_vz")
-            G0_vz = pct_G0_vz / 100 * k_g_vz_atual
+            G0_vz = pct_G0_vz / 100 * d_g_vz_atual
             st.caption(f"≈ {G0_vz:.4g} girinos/m²")
         with v3:
-            pct_S0_vz = st.number_input("$S_0$ — Sapos (% de $d_s$)",
+            pct_S0_vz = st.number_input("$S_0$: Sapos (% de $d_s$)",
                                          min_value=0.0, max_value=100.0,
                                          value=st.session_state.get("pct_S0_vz", 40.0),
                                          format="%.4g", key="pct_S0_vz")
-            S0_vz = pct_S0_vz / 100 * k_s_vz_atual
+            S0_vz = pct_S0_vz / 100 * d_s_vz_atual
             st.caption(f"≈ {S0_vz:.4g} sapos/m²")
         with v4:
-            pct_E0_vz = st.number_input("$E_0$ — Escorpiões (% de $d_e$)",
+            pct_E0_vz = st.number_input("$E_0$: Escorpiões (% de $d_e$)",
                                          min_value=0.0, max_value=100.0,
                                          value=st.session_state.get("pct_E0_vz", 20.0),
                                          format="%.4g", key="pct_E0_vz")
-            E0_vz = pct_E0_vz / 100 * k_e_vz_atual
+            E0_vz = pct_E0_vz / 100 * d_e_vz_atual
             st.caption(f"≈ {E0_vz:.4g} escorpiões/m²")
 
     with st.expander("Parâmetros do modelo (valores da Tabela 2)"):
+        st.caption(
+            "$d_a, d_g, d_s, d_e$ são as densidades máximas de referência "
+            "da Tabela 2 do artigo (indivíduos/m²); junto com a área real "
+            "de habitat na represa (fixada acima), determinam a "
+            "capacidade suporte $k_x = d_x \\times r_x$ de cada espécie — "
+            "não é o $k_x$ que deve ser informado aqui."
+        )
         q1, q2, q3 = st.columns(3)
         with q1:
             n_a_vz = st.number_input(rotulo("n_a"), value=DEFAULTS["n_a"], format="%.6f", key="n_a_vz")
             n_g_vz = st.number_input(rotulo("n_g"), value=DEFAULTS["n_g"], format="%.6f", key="n_g_vz")
             n_e_vz = st.number_input(rotulo("n_e"), value=DEFAULTS["n_e"], format="%.6f", key="n_e_vz")
-            k_a_vz = st.number_input(rotulo("k_a"), value=DEFAULTS["k_a"], format="%.6g", key="k_a_vz")
+            d_a_vz = st.number_input("$d_a$ — Aguapés (aguapés/m²)", min_value=1e-12,
+                                      value=DEFAULTS["k_a"], format="%.6g", key="d_a_vz")
         with q2:
-            k_g_vz = st.number_input(rotulo("k_g"), value=DEFAULTS["k_g"], format="%.6g", key="k_g_vz")
-            k_s_vz = st.number_input(rotulo("k_s"), value=DEFAULTS["k_s"], format="%.6g", key="k_s_vz")
-            k_e_vz = st.number_input(rotulo("k_e"), value=DEFAULTS["k_e"], format="%.6g", key="k_e_vz")
+            d_g_vz = st.number_input("$d_g$ — Girinos (girinos/m²)", min_value=1e-12,
+                                      value=DEFAULTS["k_g"], format="%.6g", key="d_g_vz")
+            d_s_vz = st.number_input("$d_s$ — Sapos adultos (sapos/m²)", min_value=1e-12,
+                                      value=DEFAULTS["k_s"], format="%.6g", key="d_s_vz")
+            d_e_vz = st.number_input("$d_e$ — Escorpiões (escorpiões/m²)", min_value=1e-12,
+                                      value=DEFAULTS["k_e"], format="%.6g", key="d_e_vz")
             mu_a_vz = st.number_input(rotulo("mu_a"), value=DEFAULTS["mu_a"], format="%.6f", key="mu_a_vz")
         with q3:
             mu_s_vz = st.number_input(rotulo("mu_s"), value=DEFAULTS["mu_s"], format="%.6f", key="mu_s_vz")
@@ -1167,8 +1177,8 @@ elif pagina == "Aplicação em Várzea das Flores":
     t_max_vz = st.slider("Duração máxima da simulação (ano(s))", min_value=1, max_value=100,
                           value=20, key="t_max_vz")
 
-    dim_vz = dict(n_a=n_a_vz, n_g=n_g_vz, n_e=n_e_vz, k_a=k_a_vz, k_g=k_g_vz, k_s=k_s_vz,
-                  k_e=k_e_vz, mu_a=mu_a_vz, mu_s=mu_s_vz, delta=delta_vz, alpha=alpha_vz,
+    dim_vz = dict(n_a=n_a_vz, n_g=n_g_vz, n_e=n_e_vz, k_a=d_a_vz, k_g=d_g_vz, k_s=d_s_vz,
+                  k_e=d_e_vz, mu_a=mu_a_vz, mu_s=mu_s_vz, delta=delta_vz, alpha=alpha_vz,
                   beta=beta_vz, theta=theta_vz)
 
     rodar_vz = st.button("Rodar simulação", type="primary", key="rodar_vz")
@@ -1177,13 +1187,13 @@ elif pagina == "Aplicação em Várzea das Flores":
         if n_a_vz <= 0:
             st.error("n_a deve ser positivo (é usado para adimensionalizar o tempo).")
             st.stop()
-        if k_a_vz <= 0 or k_g_vz <= 0 or k_s_vz <= 0 or k_e_vz <= 0:
-            st.error("As capacidades suporte (k_a, k_g, k_s, k_e) devem ser positivas.")
+        if d_a_vz <= 0 or d_g_vz <= 0 or d_s_vz <= 0 or d_e_vz <= 0:
+            st.error("As densidades máximas (d_a, d_g, d_s, d_e) devem ser positivas.")
             st.stop()
 
         p_vz = adimensionaliza_parametros(dim_vz)
 
-        y0_bar_vz = [A0_vz / k_a_vz, G0_vz / k_g_vz, S0_vz / k_s_vz, E0_vz / k_e_vz]
+        y0_bar_vz = [A0_vz / d_a_vz, G0_vz / d_g_vz, S0_vz / d_s_vz, E0_vz / d_e_vz]
 
         t_bar_max_vz = t_max_vz * n_a_vz
         t_bar_eval_vz = np.linspace(0, t_bar_max_vz, 3000)
@@ -1208,7 +1218,7 @@ elif pagina == "Aplicação em Várzea das Flores":
 
         # -- forma dimensional (densidade real, indivíduos/m²): fração
         #    adimensional × densidade máxima d_x.
-        k_dens_vz = {"A": k_a_vz, "G": k_g_vz, "S": k_s_vz, "E": k_e_vz}
+        k_dens_vz = {"A": d_a_vz, "G": d_g_vz, "S": d_s_vz, "E": d_e_vz}
         dados_vz_dens = {chave: dados_vz_rel[chave] * k_dens_vz[chave] for chave in ordem_vz}
 
         # -- população absoluta (nº de indivíduos): densidade × área real
@@ -1316,6 +1326,13 @@ else:
         "(cada população em relação à própria capacidade suporte, o que permite"
         " comparar as quatro espécies na mesma escala) e "
         "**dimensional** (a visão da trajetória em número absoluto de indivíduos)."
+    )
+    st.caption(
+        "Os valores padrão preenchidos abaixo (densidades iniciais, áreas "
+        "de habitat e demais parâmetros do modelo) correspondem ao estudo "
+        "de caso da Represa de Várzea das Flores; para mais detalhes sobre "
+        "a origem desses valores, confira a aba **Aplicação em Várzea das "
+        "Flores**, no menu lateral."
     )
 
     st.subheader("Densidade inicial de cada população")
