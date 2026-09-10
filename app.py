@@ -138,7 +138,7 @@ PARAM_INFO = {
     "alpha": {"latex": r"\alpha",  "unit": "aguapés/m²",
               "desc": "Número mínimo de aguapés no ambiente para que sejam notáveis as consequências na população de girinos."},
     "beta":  {"latex": r"\beta",   "unit": "1/(sapo$\cdot$ ano)",
-              "desc": "Eficiência de encontro entre sapo e escorpião quando a densidade de escorpiões já ultrapassou $\theta$."},
+              "desc": r"Eficiência de encontro entre sapo e escorpião quando a densidade de escorpiões já ultrapassou $\theta$."},
     "theta": {"latex": r"\theta",  "unit": "escorpiões/m²",
               "desc": "Número mínimo de escorpiões no ambiente para que eles sejam foco predatório dos sapos."},
 }
