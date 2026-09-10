@@ -136,9 +136,9 @@ PARAM_INFO = {
     "delta": {"latex": r"\delta",  "unit": "1/ano",
               "desc": "Taxa de metamorfose, quando os girinos passam para a fase adulta (sapos)."},
     "alpha": {"latex": r"\alpha",  "unit": "aguapés/m²",
-              "desc": "Taxa de saturação da função γ (regula o efeito da densidade de aguapés sobre a capacidade suporte dos girinos)."},
-    "beta":  {"latex": r"\beta",   "unit": "adimensional",
-              "desc": "Taxa de saturação da função λ (regula a predação de escorpiões pelos sapos)."},
+              "desc": "Número mínimo de aguapés no ambiente para que sejam notáveis as consequências na população de girinos."},
+    "beta":  {"latex": r"\beta",   "unit": "1/(sapo$\cdot$ ano)",
+              "desc": "Eficiência de encontro entre sapo e escorpião quando a densidade de escorpiões já ultrapassou $\theta$."},
     "theta": {"latex": r"\theta",  "unit": "escorpiões/m²",
               "desc": "Número mínimo de escorpiões no ambiente para que eles sejam foco predatório dos sapos."},
 }
