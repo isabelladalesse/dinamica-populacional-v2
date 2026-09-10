@@ -882,6 +882,127 @@ if pagina == "Modelo Matemático":
         # "separadamente na página **Aplicação em Várzea das Flores**."
     #)
 
+    st.markdown("---")
+    st.subheader("Referências")
+
+    with st.expander("Ver todas as referências utilizadas", expanded=False):
+        st.markdown("**Modelo — artigo de referência**")
+        st.markdown(
+            "- BITTENCOURT, P.; LOUZADA, M.; TAKAHASHI, L. Relação "
+            "Interespecífica: sapos e escorpiões. *Revista Biomatemática*, "
+            "IMECC – Unicamp, n. 33, 2023. Disponível em: "
+            "[ime.unicamp.br/~biomat/revistas.htm]"
+            "(https://www.ime.unicamp.br/~biomat/revistas.htm)."
+        )
+
+        st.markdown("**Aguapés**")
+        st.markdown(
+            "- KHOTSA, M. D. et al. A Comprehensive Review of the Biology, "
+            "Ecological Impacts, and Control Strategies of *Eichhornia "
+            "crassipes*. *Diversity*, v. 17, n. 8, p. 564, 2025. DOI: "
+            "[10.3390/d17080564](https://doi.org/10.3390/d17080564).\n"
+            "- GUIMARÃES, M. Aguapé, a planta mais invasora do mundo. "
+            "*Pesquisa FAPESP*, n. 332, 2023. Disponível em: "
+            "[revistapesquisa.fapesp.br]"
+            "(https://revistapesquisa.fapesp.br/aguape-a-planta-mais-invasora-do-mundo/).\n"
+            "- HILLEWAERT, H. Water Hyacinth close to Volcano Arenal, Costa "
+            "Rica. 2009. Disponível em: [Wikimedia Commons]"
+            "(https://commons.wikimedia.org/wiki/File:Eichhornia_crassipes_%28habitus%29_1.jpg) "
+            "(foto).\n"
+            "- JACKSON, G.; DEESH, A. Water hyacinth (*Eichhornia "
+            "crassipes*) — Pacific Pests, Pathogens & Weeds — Fact Sheets "
+            "(455). Queensland Department of Agriculture and Fisheries; "
+            "ACIAR, 2018. Disponível em: [lucidcentral.org]"
+            "(https://apps.lucidcentral.org/ppp_v9/text/web_full/entities/water_hyacinth_455.htm).\n"
+            "- EPPO. *Eichhornia crassipes*. *EPPO Bulletin*, v. 38, p. "
+            "441–449, 2008. DOI: "
+            "[10.1111/j.1365-2338.2008.01261.x](https://doi.org/10.1111/j.1365-2338.2008.01261.x)."
+        )
+
+        st.markdown("**Girinos**")
+        st.markdown(
+            "- LIMA, M. S. C. S.; PEDERASSI, J.; SOUZA, C. A. S. "
+            "Estimation of a closed population size of tadpoles in "
+            "temporary pond. *Brazilian Journal of Biology*, v. 78, n. 3, "
+            "p. 525–531, 2018. DOI: "
+            "[10.1590/1519-6984.09216](https://doi.org/10.1590/1519-6984.09216).\n"
+            "- PREUSS, G. et al. Lurking in the depth: Pond depth "
+            "predicts microhabitat selection by *Rhinella icterica* "
+            "(Anura: Bufonidae) tadpoles at two different sampling "
+            "scales. *Herpetozoa*, v. 34, p. 149–158, 2021. DOI: "
+            "[10.3897/herpetozoa.34.e56326](https://doi.org/10.3897/herpetozoa.34.e56326).\n"
+            "- MELO, L. S. O.; GAREY, M. V.; ROSSA-FERES, D. C. Looking "
+            "for a place: how are tadpoles distributed within tropical "
+            "ponds and streams? *Herpetology Notes*, v. 11, p. 379–386, "
+            "2018."
+        )
+
+        st.markdown("**Sapos**")
+        st.markdown(
+            "- HELMENSTINE, A. Cane Toad Facts. 2019. Disponível em: "
+            "[thoughtco.com](https://www.thoughtco.com/cane-toad-4775740).\n"
+            "- TIMM, C. Sapo-cururu (*Rhinella icterica*) fêmea. 2018. "
+            "Disponível em: [Flickr]"
+            "(https://www.flickr.com/photos/cdtimm/27935152397) (foto).\n"
+            "- WIJETHUNGA, U.; GREENLEES, M.; SHINE, R. Moving south: "
+            "effects of water temperatures on the larval development of "
+            "invasive cane toads (*Rhinella marina*) in cool-temperate "
+            "Australia. *Ecology and Evolution*, v. 6, p. 6993–7003, "
+            "2016. DOI: "
+            "[10.1002/ece3.2405](https://doi.org/10.1002/ece3.2405).\n"
+            "- PIKACHA, P.; LAVERY, T.; LEUNG, L. K.-P. What factors "
+            "affect the density of cane toads (*Rhinella marina*) in the "
+            "Solomon Islands? *Pacific Conservation Biology*, v. 21, p. "
+            "200–207, 2015. DOI: "
+            "[10.1071/PC14918](https://doi.org/10.1071/PC14918)."
+        )
+
+        st.markdown("**Escorpiões**")
+        st.markdown(
+            "- GOVERNO DO ESTADO DO RIO GRANDE DO SUL. Secretaria da "
+            "Saúde orienta sobre controle do escorpião-amarelo no Rio "
+            "Grande do Sul. Porto Alegre, 2025. Disponível em: "
+            "[estado.rs.gov.br]"
+            "(https://www.estado.rs.gov.br/secretaria-da-saude-orienta-sobre-controle-do-escorpiao-amarelo-no-rio-grande-do-sul).\n"
+            "- BATISTA, E. L. Por que os escorpiões agora preocupam. "
+            "*Revista Pesquisa FAPESP*, São Paulo, n. 247, set. 2016. "
+            "Disponível em: [revistapesquisa.fapesp.br]"
+            "(https://revistapesquisa.fapesp.br/por-que-os-escorpioes-agora-preocupam/).\n"
+            "- SANTOS, G. C. S. G. et al. Random or clumped: How litter "
+            "dwelling scorpions are distributed in a fragment of "
+            "Brazilian Atlantic forest. *European Journal of Entomology*, "
+            "v. 115, p. 445–449, 2018. DOI: "
+            "[10.14411/eje.2018.045](https://doi.org/10.14411/eje.2018.045).\n"
+            "- SEEMANN, T. M. S. et al. Evolution of the occurrence of "
+            "*Tityus serrulatus* (Lutz & Mello, 1922) in the state of "
+            "Santa Catarina. *Revista da Sociedade Brasileira de "
+            "Medicina Tropical*, v. 56, e0434-2022, 2023. DOI: "
+            "[10.1590/0037-8682-0434-2022](https://doi.org/10.1590/0037-8682-0434-2022).\n"
+            "- ESTADO DE MINAS. Com escorpião não se brinca: projeto "
+            "quer proteger crianças em BH e região. *Estado de Minas*, "
+            "abr. 2026. Disponível em: [em.com.br]"
+            "(https://www.em.com.br/gerais/2026/04/7395745-com-escorpiao-nao-se-brinca-projeto-quer-proteger-criancas-em-bh-e-regiao.html)."
+        )
+
+        st.markdown("**Represa de Várzea das Flores**")
+        st.markdown(
+            "- INSTITUTO ESTADUAL DE FLORESTAS. IEF inicia formação de "
+            "Conselho da APA Vargem das Flores. Belo Horizonte, 2014. "
+            "Disponível em: [ief.mg.gov.br]"
+            "(https://www.ief.mg.gov.br/w/ief-inicia-formacao-de-conselho-da-apa-vargem-das-flores).\n"
+            "- GUIMARÃES, V. L. et al. Um modelo semiempírico para "
+            "estimativa de turbidez na Represa de Várzea das Flores, "
+            "Minas Gerais. In: *Anais do XXI Simpósio Brasileiro de "
+            "Sensoriamento Remoto*, 2025. Disponível em: "
+            "[proceedings.science](https://proceedings.science/p/197725?lang=pt-br)."
+        )
+
+        st.markdown("**Geral**")
+        st.markdown(
+            "- TUNDISI, J. G.; MATSUMURA-TUNDISI, T. *Limnology*. Boca "
+            "Raton, FL: CRC Press, 2011. ISBN 978-0-203-80395-0."
+        )
+
 # ==========================================================================
 # PÁGINA 2 — COMO O CÓDIGO FUNCIONA
 # ==========================================================================
