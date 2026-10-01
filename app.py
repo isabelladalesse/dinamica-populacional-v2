@@ -4,17 +4,24 @@ Aguapés (A) -> Girinos (G) -> Sapos adultos (S) -> Escorpiões (E)
 
 Nas duas páginas de simulação ("Simulações Numéricas" e "Aplicação em
 Várzea das Flores"), o usuário informa, para cada espécie: a densidade
-inicial A0/G0/S0/E0 (indivíduos/m²), a densidade máxima d_x (Tabela 2 do
-artigo) e a área de habitat r_x — na página "Aplicação em Várzea das
-Flores" a área já vem fixada com os valores reais da represa (Seção 4.1
-do artigo) e não é editável, pois o usuário já está informando as áreas
-adotadas. A capacidade suporte absoluta de cada espécie é sempre
-k_x = d_x * r_x.
+inicial A0/G0/S0/E0 (em indivíduos/m² ou como % de d_x), a densidade de
+referência d_x (Tabela 2 do artigo; inclui também d_alpha e d_theta) e a
+área de habitat r_x. Na página "Aplicação em Várzea das Flores" as áreas
+vêm fixadas com os valores reais da represa (Seção 4.1 do artigo) e não são
+editáveis; na página "Simulações Numéricas" elas são livres (por padrão,
+os mesmos valores de Várzea das Flores).
+
+Os valores absolutos usados no modelo (número de indivíduos) são
+k_x = d_x * r_x, alpha = d_alpha * r_a e theta = d_theta * r_e. As áreas
+ENTRAM na dinâmica: entre os parâmetros adimensionais, k = k_s/k_g depende
+de r_s e r_g, e beta = beta*k_s/n_a depende de r_s; os demais (n_g, n_e,
+mu_a, mu_s, delta, alpha, theta) não dependem das áreas. Por isso os valores
+da Tabela 3 do artigo correspondem ao caso r_x = 1 m².
 
 Internamente, em AMBAS as páginas, o sistema é sempre resolvido na forma
-ADIMENSIONAL (Tabela 3 do artigo): a densidade inicial
-é convertida para fração adimensional (A0/d_x) antes de integrar, e o
-tempo é reescalado por n_a.
+ADIMENSIONAL (Seção 2.1 do artigo): a densidade inicial é convertida em
+fração adimensional (A0/d_x) antes de integrar, e o tempo é reescalado por
+n_a.
 
 Depois de integrado, cada página apresenta os resultados em DOIS layouts
 de 4 gráficos:
@@ -23,8 +30,10 @@ de 4 gráficos:
      dinâmica das quatro espécies na mesma escala, mesmo que suas
      capacidades suporte reais difiram em várias ordens de grandeza.
   2. Forma dimensional — a mesma trajetória multiplicada por k_x = d_x *
-     r_x, mostrando a população absoluta (número estimado de indivíduos)
-     ao longo do tempo, em vez de apenas o valor final.
+     r_x, mostrando a população absoluta (número de indivíduos) ao longo
+     do tempo, em vez de apenas o valor final.
+Os pontos de equilíbrio e o texto de interpretação também são expressos em
+número de indivíduos (fração adimensional × k_x).
 """
 
 import numpy as np
@@ -49,8 +58,8 @@ DEFAULTS = {
     "mu_s": 0.13,      # 1/ano
     "delta": 5.0e-3,   # 1/ano
     "alpha": 5.0,      # aguapés/m²
-    "beta": 0.1,       # (?)
-    "theta": 3.4e-2,   # escorpiões/m² (20% de k_e, valor atualizado da Tabela 2)
+    "beta": 0.1,       # 1/(sapo·ano)
+    "theta": 3.4e-2,   # escorpiões/m² (d_theta: 20% de d_e, Tabela 2)
 }
 
 # --------------------------------------------------------------------------
@@ -59,16 +68,14 @@ DEFAULTS = {
 # No artigo, os parâmetros k_a, k_g, k_s, k_e, alpha e theta representam
 # valores absolutos, obtidos por k_x = d_x * r_x, sendo d_x a densidade de
 # referência (Tabela 2) e r_x a área de habitat da espécie correspondente.
-# Nesta página de aplicação, os valores DIMENSIONAIS de DEFAULTS (d_x) são
-# usados diretamente na simulação — equivalente a adotar r_x = 1 m² para
-# todas as espécies durante a integração numérica —, garantindo a
-# consistência dimensional dos termos de acoplamento entre espécies (n_g*S
-# na equação de G, delta*G na de S, beta*S na de E).
-#
-# As áreas reais abaixo (r_x) são usadas apenas DEPOIS da simulação, para
-# traduzir a trajetória de densidade resultante (e não só o valor final)
-# em uma estimativa de contagem absoluta de indivíduos na represa
-# (k_x = d_x * r_x), sem realimentar o sistema de equações.
+# Nesta página de aplicação, as áreas reais abaixo (r_x) entram NA
+# integração numérica: k_x = d_x * r_x, alpha = d_alpha * r_a e
+# theta = d_theta * r_e, exatamente como na página "Simulações Numéricas"
+# configurada com os valores de Várzea das Flores (Seção 4.2 do artigo).
+# As áreas não se cancelam em todas as razões adimensionais: k = k_s/k_g e
+# beta = beta*k_s/n_a dependem de r_s e r_g (os demais parâmetros
+# adimensionais independem das áreas). O resultado em número de indivíduos
+# é a trajetória adimensional multiplicada por k_x = d_x * r_x.
 AREA_ESPELHO_AGUA = 3.76e6      # espelho d'água total (habitat do aguapé)
 
 # Perímetro estimado pelo Índice de Desenvolvimento de Margem (Shoreline
@@ -78,9 +85,9 @@ D_S_ESTIMADO = 4.0
 PERIMETRO_ESPELHO_AGUA = D_S_ESTIMADO * 2 * np.sqrt(np.pi * AREA_ESPELHO_AGUA)
 
 # Girinos: em vez de uma fração da área do espelho d'água, considera-se uma
-# faixa litorânea estreita ao longo do perímetro (largura entre 0,5 e 1 m,
-# aqui 0,75 m como valor de referência), da qual apenas metade é
-# efetivamente ocupada pelos girinos (distribuição não uniforme na margem).
+# faixa litorânea estreita ao longo do perímetro (largura de referência de
+# 0,5 m), da qual apenas 10% é efetivamente ocupada pelos girinos
+# (distribuição não uniforme na margem): r_g = f_g * P * w_g ≈ 1.375 m².
 LARGURA_MARGEM_GIRINO = 0.5     # m — largura da faixa litorânea considerada
 FRACAO_OCUPACAO_GIRINO = 0.10   # fração da faixa efetivamente ocupada
 AREA_GIRINO = FRACAO_OCUPACAO_GIRINO * PERIMETRO_ESPELHO_AGUA * LARGURA_MARGEM_GIRINO
@@ -94,10 +101,11 @@ AREA_HABITAT_VZ = {"A": AREA_ESPELHO_AGUA, "G": AREA_GIRINO, "S": AREA_APP, "E":
 # --------------------------------------------------------------------------
 # Nesta página, o usuário informa, para cada espécie, a densidade inicial
 # (indivíduos/m², em blocos de destaque), a área r_x de habitat (também em
-# destaque) e a densidade máxima d_x (num expander separado). A capacidade
-# suporte absoluta é então k_x = d_x * r_x, usada para converter a densidade
-# inicial em fração adimensional (A0/d_x) antes de resolver o sistema
-# adimensional, e depois para converter a solução de volta em número
+# destaque) e a densidade de referência d_x (num expander separado). A
+# densidade inicial é convertida em fração adimensional dividindo por d_x
+# (A0/d_x); a capacidade suporte absoluta k_x = d_x * r_x (e alpha =
+# d_alpha * r_a, theta = d_theta * r_e) entra nos parâmetros adimensionais
+# (k e beta dependem das áreas) e converte a solução adimensional em número
 # absoluto de indivíduos (fração adimensional × k_x). Os valores padrão de
 # área abaixo reaproveitam os mesmos números da aplicação em Várzea das
 # Flores; os valores padrão de densidade inicial reproduzem as frações
@@ -119,28 +127,41 @@ PARAM_INFO = {
               "desc": "Taxa de nascimento de aguapés."},
     "n_g":   {"latex": r"n_g",     "unit": "1/ano",
               "desc": "Taxa de nascimento dos girinos."},
-    "n_e":   {"latex": r"n_e",     "unit": "1/ano",
+    "n_e":   {"latex": r"n_e",     "unit": "escorpiões/(escorpião adulto·ano)",
               "desc": "Taxa de nascimento dos escorpiões."},
-    "k_a":   {"latex": r"k_a",     "unit": "aguapés/m²",
-              "desc": "Capacidade suporte de aguapés: quantidade máxima de plantas que o ambiente permite."},
-    "k_g":   {"latex": r"k_g",     "unit": "girinos/m²",
-              "desc": "Capacidade suporte de girinos: número máximo de girinos que o ecossistema sustenta, em um ambiente sem interferência de aguapés."},
-    "k_s":   {"latex": r"k_s",     "unit": "sapos/m²",
-              "desc": "Capacidade suporte de sapos adultos: quantidade máxima de sapos que o ambiente permite."},
-    "k_e":   {"latex": r"k_e",     "unit": "escorpiões/m²",
-              "desc": "Capacidade suporte de escorpiões: quantidade máxima que o ambiente permite."},
+    "k_a":   {"latex": r"k_a",     "unit": "aguapés",
+              "desc": r"Capacidade suporte de aguapés: quantidade máxima de plantas que o ambiente permite ($k_a = d_a \cdot r_a$)."},
+    "k_g":   {"latex": r"k_g",     "unit": "girinos",
+              "desc": r"Capacidade suporte de girinos: número máximo de girinos que o ecossistema sustenta, em um ambiente sem interferência de aguapés ($k_g = d_g \cdot r_g$)."},
+    "k_s":   {"latex": r"k_s",     "unit": "sapos",
+              "desc": r"Capacidade suporte de sapos adultos: quantidade máxima de sapos que o ambiente permite ($k_s = d_s \cdot r_s$)."},
+    "k_e":   {"latex": r"k_e",     "unit": "escorpiões",
+              "desc": r"Capacidade suporte de escorpiões: quantidade máxima de escorpiões que o ambiente permite ($k_e = d_e \cdot r_e$)."},
+    "d_x":   {"latex": r"d_x",     "unit": "indivíduos/m²",
+              "desc": r"Densidade de referência de cada espécie ou parâmetro, $x \in \{a, g, s, e, \alpha, \theta\}$."},
+    "r_x":   {"latex": r"r_x",     "unit": "m²",
+              "desc": r"Área de habitat associada à espécie ou parâmetro $x$, utilizada para converter a densidade de referência $d_x$ no valor absoluto $k_x$ (ou $\alpha$, $\theta$). Para $\alpha$ e $\theta$ usam-se $r_a$ e $r_e$, respectivamente."},
     "mu_a":  {"latex": r"\mu_a",   "unit": "1/ano",
               "desc": "Taxa de mortalidade de aguapés, que inclui morte natural e remoção de aguapés. (Sem valor de referência na literatura — padrão adotado: 0.)"},
     "mu_s":  {"latex": r"\mu_s",   "unit": "1/ano",
               "desc": "Taxa de mortalidade dos sapos adultos."},
     "delta": {"latex": r"\delta",  "unit": "1/ano",
               "desc": "Taxa de metamorfose, quando os girinos passam para a fase adulta (sapos)."},
-    "alpha": {"latex": r"\alpha",  "unit": "aguapés/m²",
-              "desc": "Número mínimo de aguapés no ambiente para que sejam notáveis as consequências na população de girinos."},
-    "beta":  {"latex": r"\beta",   "unit": "1/(sapo$\cdot$ ano)",
+    "alpha": {"latex": r"\alpha",  "unit": "aguapés",
+              "desc": r"Número mínimo de aguapés no ambiente para que sejam notáveis as consequências na população de girinos ($\alpha = d_\alpha \cdot r_a$)."},
+    "beta":  {"latex": r"\beta",   "unit": r"1/(sapo$\cdot$ ano)",
               "desc": r"Eficiência de encontro entre sapo e escorpião quando a densidade de escorpiões já ultrapassou $\theta$."},
-    "theta": {"latex": r"\theta",  "unit": "escorpiões/m²",
-              "desc": "Número mínimo de escorpiões no ambiente para que eles sejam foco predatório dos sapos."},
+    "theta": {"latex": r"\theta",  "unit": "escorpiões",
+              "desc": r"Número mínimo de escorpiões no ambiente para que eles sejam foco predatório dos sapos ($\theta = d_\theta \cdot r_e$)."},
+}
+
+# Unidades das densidades de referência d_x (Tabela 2 do artigo). Os valores
+# guardados em DEFAULTS sob as chaves k_a, k_g, k_s, k_e, alpha e theta são,
+# na verdade, d_a, d_g, d_s, d_e, d_alpha e d_theta (por m²); as unidades em
+# PARAM_INFO para essas chaves são as dos valores ABSOLUTOS (nº de indivíduos).
+UNIT_DENSIDADE = {
+    "k_a": "aguapés/m²", "k_g": "girinos/m²", "k_s": "sapos/m²",
+    "k_e": "escorpiões/m²", "alpha": "aguapés/m²", "theta": "escorpiões/m²",
 }
 
 UNITS = {
@@ -148,15 +169,6 @@ UNITS = {
     "G": "girinos/m²",
     "S": "sapos/m²",
     "E": "escorpiões/m²",
-}
-# Usadas na página "Simulações Numéricas": ali as populações são exibidas
-# na forma adimensional (cada espécie em relação à sua própria capacidade
-# suporte), sem unidade de densidade.
-UNITS_REL = {
-    "A": "",
-    "G": "",
-    "S": "",
-    "E": "",
 }
 # Usadas quando o resultado é expresso em número absoluto de indivíduos
 # (gráfico "dimensional" / população absoluta, nas duas páginas de
@@ -202,6 +214,14 @@ def formata_cientifica(valor, casas=3):
     return f"{sinal}{mantissa_str}×10{exp_str}"
 
 
+# alpha e theta são valores absolutos (nº de indivíduos): alpha = d_alpha * r_a
+# e theta = d_theta * r_e. O usuário informa as DENSIDADES d_alpha e d_theta.
+ROTULO_D_ALPHA = r"$d_\alpha$ (aguapés/m²)"
+ROTULO_D_THETA = r"$d_\theta$ (escorpiões/m²)"
+HELP_D_ALPHA = r"Densidade de referência associada a $\alpha$. O modelo usa $\alpha = d_\alpha \cdot r_a$ (número absoluto de aguapés)."
+HELP_D_THETA = r"Densidade de referência associada a $\theta$. O modelo usa $\theta = d_\theta \cdot r_e$ (número absoluto de escorpiões)."
+
+
 def rotulo(chave):
     """Monta o rótulo (em LaTeX, tamanho de label) para um number_input."""
     info = PARAM_INFO[chave]
@@ -217,6 +237,22 @@ MODO_DENSIDADE = "Densidade (indivíduos/m²)"
 MODO_PERCENTUAL = "Porcentagem da densidade máxima ($d_x$)"
 
 CENARIOS_INICIAIS = {
+    "Início do povoamento": {
+        # condições iniciais usadas nas simulações do artigo (Seção 4.2):
+        # 3,5% de d_a, 7,1% de d_g, 0,4% de d_s e 2% de d_e
+        "A0": 0.035,
+        "G0": 0.071,
+        "S0": 0.004,
+        "E0": 0.02,
+        "desc": (
+            "Condições iniciais adotadas nas simulações do artigo para a "
+            "Represa de Várzea das Flores: aguapés a 3,5% de $d_a$, "
+            "girinos a 7,1% de $d_g$, sapos adultos a 0,4% de $d_s$ e "
+            "escorpiões a 2% de $d_e$. Representa o início do "
+            "povoamento, com todas as populações ainda muito abaixo da "
+            "capacidade suporte."
+        ),
+    },
     "Início da invasão de aguapés": {
         # já na forma adimensional: valores diretamente em relação à
         # capacidade suporte de cada espécie
@@ -298,40 +334,6 @@ def sistema_adimensional(t, y, p):
     return [dA, dG, dS, dE]
 
 
-def sistema_dimensional(t, y, dim):
-    """
-    Sistema dimensional (Equação \\eqref{modelo} do artigo, Seção 2), em
-    unidades absolutas de indivíduos — sem normalizar pelas capacidades
-    suporte. Usado apenas pela página "Simulações Numéricas": a simulação
-    numérica é resolvida diretamente com a quantidade inicial absoluta
-    informada pelo usuário; a conversão para a forma adimensional (fração da
-    capacidade suporte) é feita só depois de integrado o sistema, apenas
-    para exibir os gráficos numa escala comum e comparável entre as
-    quatro espécies.
-
-    `dim` deve conter as capacidades suporte absolutas (k_a, k_g, k_s,
-    k_e = d_x * r_x) e os parâmetros alpha, theta também já convertidos
-    para valores absolutos (alpha = d_alpha * r_a, theta = d_theta * r_e).
-    """
-    A, G, S, E = y
-    k_a, k_g, k_s, k_e = dim["k_a"], dim["k_g"], dim["k_s"], dim["k_e"]
-    n_a, n_g, n_e = dim["n_a"], dim["n_g"], dim["n_e"]
-    mu_a, mu_s, delta = dim["mu_a"], dim["mu_s"], dim["delta"]
-    alpha, beta, theta = dim["alpha"], dim["beta"], dim["theta"]
-
-    dA = n_a * A * (1 - A / k_a) - mu_a * A
-
-    gamma_A = k_g * (1 - (A ** 2) / (alpha ** 2 + A ** 2 + EPS))
-    dG = n_g * S * (1 - G / (gamma_A + EPS)) - delta * G
-
-    dS = delta * G * (1 - S / k_s) - mu_s * S
-
-    lam_E = beta * S * E * (E ** 2 / (theta ** 2 + E ** 2 + EPS))
-    dE = n_e * E * (1 - E / k_e) - lam_E
-
-    return [dA, dG, dS, dE]
-
-
 def adimensionaliza_parametros(dim):
     """Converte parâmetros dimensionais (Tabela 2) para adimensionais (Tabela 3)."""
     n_a = dim["n_a"]
@@ -385,10 +387,9 @@ def analisa_populacao(t, y, tol=0.02):
 def gera_texto(resultados, t_max_anos, texto_convergencia=None, unidades=None):
     """
     unidades: dict opcional {"A":..., "G":..., "S":..., "E":...} com o texto
-    de unidade a ser exibido após cada valor. Se None, usa UNITS (densidade
-    real, usado na página "Aplicação em Várzea das Flores"). A página
-    "Simulações Numéricas" passa UNITS_REL (strings vazias), já que ali as
-    populações são exibidas na forma adimensional.
+    de unidade exibido após cada valor. Se None, usa UNITS (densidade por
+    m²). As duas páginas de simulação passam UNITS_ABS, pois os valores são
+    expressos em número absoluto de indivíduos.
     """
     if unidades is None:
         unidades = UNITS
@@ -422,32 +423,6 @@ def gera_texto(resultados, t_max_anos, texto_convergencia=None, unidades=None):
 
         linhas.append(
             f"- **{nome} ({chave})**: a população **{tendencia}** ao longo do tempo e {desc_final}{desc_tempo}{desc_var}."
-        )
-    return "\n".join(linhas)
-
-
-def gera_texto_contagem(resultados, dim, areas, unidade_area="m²"):
-    """
-    Estima a contagem absoluta final de indivíduos de cada espécie, a partir
-    da população relativa final (forma adimensional), da densidade de
-    referência d_x (na página "Simulações Numéricas", os valores k_a, k_g,
-    k_s, k_e informados em `dim` já representam densidades, pois adota-se
-    r_x = 1 m² internamente — ver docstring no topo do arquivo) e da área de
-    habitat r_x escolhida pelo usuário:
-
-        contagem estimada = (população relativa final) × d_x × r_x
-    """
-    chave_para_kx = {"A": "k_a", "G": "k_g", "S": "k_s", "E": "k_e"}
-    linhas = []
-    for chave in ["A", "G", "S", "E"]:
-        yf_relativo = resultados[chave][1]
-        densidade_final = yf_relativo * dim[chave_para_kx[chave]]
-        contagem = densidade_final * areas[chave]
-        linhas.append(
-            f"- **{NOMES[chave]} ({chave})**: aproximadamente "
-            f"**{contagem:,.0f} indivíduos** "
-            f"(densidade final ≈ {densidade_final:.4g} {UNITS[chave]} "
-            f"× área de {areas[chave]:,.0f} {unidade_area})."
         )
     return "\n".join(linhas)
 
@@ -560,15 +535,24 @@ def jacobiano(A, G, S, E, p):
     return J
 
 
-def classifica_estabilidade(autovalores, tol=1e-8):
-    """Classifica o ponto de equilíbrio a partir das partes reais dos autovalores."""
+def classifica_estabilidade(autovalores, tol=1e-8, tol_imag=1e-8):
+    """Classifica o ponto de equilíbrio pelos autovalores da Jacobiana.
+
+    - todas as partes reais < 0: estável — "nó" (autovalores reais) ou
+      "foco" (há autovalores complexos: trajetórias em espiral);
+    - todas as partes reais > 0: instável — "nó" ou "foco", idem;
+    - sinais mistos: instável, ponto de sela;
+    - alguma parte real ≈ 0: caso degenerado.
+    """
     partes_reais = np.real(autovalores)
     if np.any(np.abs(partes_reais) < tol):
         return "Caso degenerado (autovalor com parte real ≈ 0)"
+    tem_complexos = bool(np.any(np.abs(np.imag(autovalores)) > tol_imag))
+    tipo = "foco" if tem_complexos else "nó"
     if np.all(partes_reais < 0):
-        return "Estável"
+        return f"Estável ({tipo})"
     if np.all(partes_reais > 0):
-        return "Instável (nó/fonte instável)"
+        return f"Instável ({tipo})"
     return "Instável (ponto de sela)"
 
 
@@ -664,11 +648,13 @@ def relatorio_estabilidade(dim, p, fatores=None):
     Monta o relatório completo (texto Markdown) da verificação de estabilidade
     dos pontos de equilíbrio P0..P7, para os parâmetros atuais.
 
-    fatores: tupla (f_A, f_G, f_S, f_E) usada para exibir as coordenadas.
-    Se None, usa as capacidades suporte reais (dim["k_a"], ...) — caso da
-    página "Aplicação em Várzea das Flores". A página "Simulações
-    Numéricas" passa fatores=(1,1,1,1), pois ali as populações já são
-    exibidas na forma adimensional.
+    fatores: tupla (f_A, f_G, f_S, f_E) pela qual as coordenadas adimensionais
+    dos pontos são multiplicadas antes de serem exibidas. Se None, usa as
+    capacidades suporte absolutas dim["k_a"], ..., dim["k_e"] (k_x = d_x * r_x),
+    de modo que as coordenadas saem em número de indivíduos — como nas duas
+    páginas de simulação (a de Várzea passa explicitamente esses mesmos
+    valores). Para ver as coordenadas na forma adimensional, use
+    fatores=(1, 1, 1, 1).
     """
     if fatores is None:
         fatores = (dim["k_a"], dim["k_g"], dim["k_s"], dim["k_e"])
@@ -709,8 +695,9 @@ def identifica_convergencia(dim, p, dados, tol_proximo=0.02, tol_aproximando=0.2
     um texto padrão sobre "por qual caminho" as condições iniciais evoluíram.
 
     fatores: ver docstring de relatorio_estabilidade. Se None, usa as
-    capacidades suporte reais (dim["k_a"], ...); a página "Simulações
-    Numéricas" passa fatores=(1,1,1,1).
+    capacidades suporte absolutas (k_x = d_x * r_x), e `dados` deve estar em
+    número de indivíduos, como nas duas páginas de simulação. Com
+    fatores=(1, 1, 1, 1), `dados` deve estar na forma adimensional.
     """
     if fatores is None:
         fatores = (dim["k_a"], dim["k_g"], dim["k_s"], dim["k_e"])
@@ -737,7 +724,7 @@ def identifica_convergencia(dim, p, dados, tol_proximo=0.02, tol_aproximando=0.2
     nome = melhor["nome"]
 
     if melhor_dist <= tol_proximo:
-        if classificacao == "Estável":
+        if classificacao.startswith("Estável"):
             return (f"Considerando as quatro populações em conjunto, as condições iniciais "
                      f"evoluíram seguindo a direção estável de **{nome}**, ponto de equilíbrio "
                      f"que o sistema efetivamente atingiu ao final do período simulado.")
@@ -797,7 +784,7 @@ if pagina == "Modelo Matemático":
         \displaystyle \frac{d\bar{A}}{d\bar{t}} = \bar{A}\left(1-\bar{A}\right)-\bar{\mu_a}\bar{A}\\[0.4cm]
         \displaystyle \frac{d\bar{G}}{d\bar{t}} =\bar{n_g}\bar{k}\bar{S}\left(1-\bar{G}\left(1+\frac{\bar{A}^2}{\bar{\alpha}^2}\right)\right) - \bar{\delta}\bar{G}\\[0.4cm]
         \displaystyle \frac{d\bar{S}}{d\bar{t}} = \bar{\delta}\bar{k}^{-1}\bar{G}\left(1-\bar{S}\right) - \bar{\mu_s}\bar{S}\\[0.4cm]
-        \displaystyle \frac{d{E}}{d{t}} = \bar{E}\left[\bar{n_e}\left(1-\bar{E}\right)-\bar{\beta}\bar{S}\left(\dfrac{\bar{E}^2}{\bar{\theta}^2+\bar{E}^2}\right)\right],
+        \displaystyle \frac{d\bar{E}}{d\bar{t}} = \bar{E}\left[\bar{n_e}\left(1-\bar{E}\right)-\bar{\beta}\bar{S}\left(\dfrac{\bar{E}^2}{\bar{\theta}^2+\bar{E}^2}\right)\right],
         \end{cases}
         """)
 
@@ -812,6 +799,15 @@ if pagina == "Modelo Matemático":
 
     st.markdown("---")
     st.subheader("Significado dos parâmetros")
+    st.caption(
+        r"Os parâmetros $k_a, k_g, k_s, k_e, \alpha$ e $\theta$ representam "
+        r"quantidades de indivíduos, obtidas por $k_x = d_x \cdot r_x$, sendo "
+        r"$d_x$ a densidade de referência, com $x \in \{a, g, s, e, \alpha, "
+        r"\theta\}$, e $r_x$ a região de habitat da espécie correspondente. "
+        r"Como $\alpha$ e $\theta$ não têm área de habitat própria, usam-se "
+        r"$r_a$ e $r_e$: $\alpha = d_\alpha \cdot r_a$ e "
+        r"$\theta = d_\theta \cdot r_e$."
+    )
     for chave, info in PARAM_INFO.items():
         col_simb, col_desc = st.columns([1, 6])
         with col_simb:
@@ -823,17 +819,17 @@ if pagina == "Modelo Matemático":
     st.subheader("Valores padrão adotados")
     st.caption(
         "Os valores abaixo são densidades de referência $d_x$ (Tabela 2 do "
-        "artigo), não as capacidades suporte absolutas $k_x$: "
-        "$k_x = d_x \\cdot r_x$ só é calculado depois, ao multiplicar pela "
-        "área de habitat $r_x$ de cada espécie (fixa na página de "
-        "aplicação, ou definida pelo usuário na de simulações)."
+        "artigo). Os valores absolutos usados no modelo são obtidos "
+        "multiplicando pela área de habitat de cada espécie: "
+        "$k_x = d_x \\cdot r_x$, $\\alpha = d_\\alpha \\cdot r_a$ e "
+        "$\\theta = d_\\theta \\cdot r_e$ (áreas fixas na página de "
+        "aplicação, ou definidas pelo usuário na de simulações)."
     )
 
     # Nesta tabela, os valores exibidos para k_a/k_g/k_s/k_e/alpha/theta são
-    # densidades de referência (d_x), não as capacidades suporte absolutas
-    # (k_x = d_x * r_x). Por isso, aqui — e só aqui — o símbolo mostrado é
-    # trocado para d_x, mantendo o restante do app (rótulos de widgets,
-    # significado dos parâmetros etc.) como está.
+    # densidades de referência (d_x), não os valores absolutos (k_x = d_x * r_x;
+    # alpha = d_alpha * r_a; theta = d_theta * r_e). Por isso, aqui — e só aqui —
+    # o símbolo e a unidade mostrados são trocados para os de d_x (por m²).
     SIMBOLOS_VALORES_PADRAO = {
         "k_a": r"d_a", "k_g": r"d_g", "k_s": r"d_s", "k_e": r"d_e",
         "alpha": r"d_\alpha", "theta": r"d_\theta",
@@ -856,7 +852,7 @@ if pagina == "Modelo Matemático":
         with col_v:
             st.markdown(f"{DEFAULTS[chave]:.4g}")
         with col_u:
-            st.markdown(info["unit"])
+            st.markdown(UNIT_DENSIDADE.get(chave, info["unit"]))
     st.caption(
         r"$\mu_a$ adotado por padrão é 0, mas pode "
         "ser alterado livremente na página de simulações, a fim de "
@@ -1016,6 +1012,12 @@ elif pagina == "Como o Código Funciona":
         "Jacobiano etc.) foram deduzidas previamente a partir do modelo "
         "matemático, o código apenas as implementa e resolve numericamente."
     )
+    st.markdown(
+        "Os passos abaixo valem para as duas páginas de simulação "
+        "(**Simulações Numéricas** e **Aplicação em Várzea das Flores**). A "
+        "única diferença entre elas é que, na página de Várzea das Flores, as "
+        "áreas de habitat $r_x$ já vêm fixadas com os valores da represa."
+    )
 
     st.markdown("---")
     st.subheader("Parte 1 — Verificação de estabilidade dos pontos de equilíbrio")
@@ -1025,41 +1027,52 @@ elif pagina == "Como o Código Funciona":
         "condições iniciais). Ordem de execução:"
     )
     st.markdown(
-        """
-1. **Adimensionaliza os parâmetros.** Os parâmetros dimensionais informados
-   nos campos são convertidos para as variáveis adimensionais (as mesmas
-   relações mostradas na página **Modelo Matemático**).
+        r"""
+1. **Converte as densidades em valores absolutos.** Os campos informam
+   densidades de referência $d_x$ (indivíduos/m²) e áreas de habitat $r_x$
+   (m²). O código calcula $k_x = d_x \cdot r_x$ (capacidade suporte, em número
+   de indivíduos) para aguapés, girinos, sapos e escorpiões, e também
+   $\alpha = d_\alpha \cdot r_a$ e $\theta = d_\theta \cdot r_e$.
 
-2. **Verifica a condição de existência de cada ponto de equilíbrio (P0 a P7).**
+2. **Adimensionaliza os parâmetros.** Os parâmetros, já em valores absolutos,
+   são convertidos para as variáveis adimensionais (as mesmas relações
+   mostradas na página **Modelo Matemático**). As áreas influenciam esses
+   parâmetros: $\bar{k} = k_s/k_g$ depende de $r_s$ e $r_g$, e
+   $\bar{\beta} = \beta k_s/n_a$ depende de $r_s$; os demais parâmetros
+   adimensionais não dependem das áreas.
+
+3. **Verifica a condição de existência de cada ponto de equilíbrio (P0 a P7).**
    Para cada um dos 8 pontos, o código testa a desigualdade/condição
-   correspondente (por exemplo, $n_g > \\mu_s$ ou $\\mu_a \\le 1$) e, se ela for
+   correspondente (por exemplo, $n_g > \mu_s$ ou $\mu_a \le 1$) e, se ela for
    satisfeita, calcula as coordenadas do ponto pelas fórmulas já deduzidas
    analiticamente. Se a condição não é satisfeita, o ponto é reportado como
    "não existe" e nenhuma outra conta é feita para ele.
 
-3. **Encontra a coordenada de equilíbrio de E nos pontos P3 e P7.**
+4. **Encontra a coordenada de equilíbrio de E nos pontos P3 e P7.**
    Esses dois pontos dependem da raiz positiva de um polinômio de grau 3 em
    $E$ (a nulclina não trivial de $E$). O código monta os coeficientes desse
    polinômio e chama a função nativa **`numpy.roots`** para obter todas as
    raízes (reais e complexas); em seguida filtra apenas as raízes reais e
    positivas e usa a menor delas.
 
-4. **Monta a matriz Jacobiana do sistema adimensional**, avaliada nas
+5. **Monta a matriz Jacobiana do sistema adimensional**, avaliada nas
    coordenadas de cada ponto de equilíbrio que existe. As expressões de cada
    entrada da Jacobiana (as derivadas parciais) também já haviam sido
    calculadas previamente; o código só substitui os valores numéricos.
 
-5. **Calcula autovalores e autovetores da Jacobiana** chamando a função
+6. **Calcula autovalores e autovetores da Jacobiana** chamando a função
    nativa **`numpy.linalg.eig`** sobre a matriz montada no passo anterior.
 
-6. **Classifica a estabilidade do ponto** observando o sinal da parte real
+7. **Classifica a estabilidade do ponto** observando o sinal da parte real
    dos autovalores (obtida com **`numpy.real`**):
-   - todas as partes reais negativas → **estável**;
-   - todas positivas → **instável (nó/fonte instável)**;
+   - todas as partes reais negativas → **estável**, do tipo **nó** (todos os
+     autovalores reais) ou **foco** (há autovalores complexos, com
+     trajetórias em espiral);
+   - todas positivas → **instável**, também do tipo **nó** ou **foco**;
    - sinais mistos → **instável (ponto de sela)**;
    - alguma parte real ≈ 0 → **caso degenerado**.
 
-7. **Descreve a direção de aproximação ao ponto.** Para cada autovalor com
+8. **Descreve a direção de aproximação ao ponto.** Para cada autovalor com
    parte real negativa (ou seja, cada direção que atrai trajetórias vizinhas),
    o código lê o autovetor correspondente e descreve, em palavras, quais
    variáveis ($A$, $G$, $S$ ou $E$) aumentam ou diminuem nessa direção. Quando
@@ -1067,13 +1080,11 @@ elif pagina == "Como o Código Funciona":
    espiral: o código usa a parte real (**`numpy.real`**) e a parte imaginária
    (**`numpy.imag`**) do autovetor para descrever as duas direções combinadas.
 
-8. **Exibe as coordenadas do ponto de equilíbrio.** Na página
-   **Simulações Numéricas**, isso é feito diretamente na forma
-   adimensional (sem reconversão), a mesma usada nos gráficos; na página
-   **Aplicação em Várzea das Flores**, as coordenadas são multiplicadas
-   pela respectiva capacidade suporte real antes de aparecerem no texto.
-   Em ambos os casos, o resultado é o texto exibido dentro do expansor
-   **"Ver verificação de estabilidade"**.
+9. **Exibe as coordenadas do ponto de equilíbrio em número de indivíduos.**
+   As coordenadas adimensionais de cada ponto são multiplicadas pela
+   respectiva capacidade suporte absoluta $k_x$ antes de aparecerem no
+   texto, nas duas páginas. O resultado é o texto exibido dentro do
+   expansor **"Ver verificação de estabilidade"**.
         """
     )
 
@@ -1085,53 +1096,63 @@ elif pagina == "Como o Código Funciona":
         "dita, nesta ordem:"
     )
     st.markdown(
-        """
-1. **Usa diretamente as condições iniciais informadas** ($A_0, G_0, S_0,
-   E_0$). Na página **Simulações Numéricas**, elas já são fornecidas na
-   forma adimensional (ou seja, como a própria variável adimensional); na
-   página **Aplicação em Várzea das Flores**, são fornecidas como
-   densidade e o código as divide pela respectiva capacidade suporte real
-   para obter a condição inicial adimensional.
+        r"""
+1. **Converte as condições iniciais para a forma adimensional.** Você
+   informa $A_0, G_0, S_0, E_0$ como densidade (indivíduos/m²) ou como
+   porcentagem da densidade de referência $d_x$, nas duas páginas. O código
+   as transforma em fração de $d_x$ dividindo por ela:
+   $\bar{A}_0 = A_0/d_a$, $\bar{G}_0 = G_0/d_g$, $\bar{S}_0 = S_0/d_s$ e
+   $\bar{E}_0 = E_0/d_e$ (o mesmo que dividir a quantidade absoluta
+   $A_0 \cdot r_a$ pela capacidade suporte $k_a$, e assim para as demais).
 
-2. **Define o tempo adimensional de simulação**, multiplicando a duração
-   escolhida (em anos) por $n_a$, e cria o vetor de instantes em que a
-   solução será avaliada com a função nativa **`numpy.linspace`** (3000
-   pontos igualmente espaçados).
+2. **Define o tempo adimensional de simulação**, $\bar{t} = n_a t$,
+   multiplicando a duração escolhida (em anos) por $n_a$, e cria o vetor de
+   instantes em que a solução será avaliada com a função nativa
+   **`numpy.linspace`** (3000 pontos igualmente espaçados).
 
 3. **Resolve numericamente o sistema de equações diferenciais** (o sistema
    adimensional mostrado na página Modelo Matemático) chamando a função
    nativa **`scipy.integrate.solve_ivp`**, com o método `"LSODA"`
    (adequado para sistemas que podem ficar rígidos/"stiff") e tolerâncias de
-   erro relativa e absoluta ajustadas para maior precisão.
+   erro relativa e absoluta de $10^{-8}$ e $10^{-10}$, ajustadas para maior
+   precisão.
 
-4. **Converte apenas o eixo do tempo de volta para anos** (dividindo por
-   $n_a$). Na página **Simulações Numéricas**, as quatro séries temporais
-   das populações permanecem na forma adimensional, ficando todas na mesma
-   escala (entre 0 e aproximadamente 1); na página **Aplicação em Várzea
-   das Flores**, cada série é multiplicada pela respectiva capacidade
-   suporte real para retornar à densidade dimensional.
+4. **Converte o tempo de volta para anos e gera as duas formas de
+   resultado.** O tempo é dividido por $n_a$. A solução adimensional é
+   mantida como está (**forma adimensional**: as quatro séries ficam na mesma
+   escala, entre 0 e aproximadamente 1) e também é multiplicada pela
+   capacidade suporte absoluta $k_x = d_x \cdot r_x$ de cada espécie
+   (**forma dimensional**: número absoluto de indivíduos ao longo do tempo).
+   Isso vale nas duas páginas.
 
 5. **Verifica, para cada população, se e quando ela se estabiliza**, ou seja,
    a partir de que instante os valores passam a permanecer dentro de uma
    faixa de 2% em torno do valor final observado no período simulado (essa
    lógica de comparação foi definida por mim, não é uma função pronta de
-   biblioteca).
+   biblioteca). O instante é o mesmo nas duas formas, pois multiplicar por
+   uma constante positiva não altera esse critério relativo.
 
-6. **Monta a figura com os 4 gráficos** (grade 2×2, um por população) usando
-   as funções nativas do **`matplotlib.pyplot`**: `subplots` para criar a
+6. **Monta as duas figuras**, cada uma com 4 gráficos (grade 2×2, um por
+   população): a da forma adimensional e a da forma dimensional. Usa as
+   funções nativas do **`matplotlib.pyplot`**: `subplots` para criar a
    grade de eixos, `ax.plot` para desenhar cada curva, `ax.scatter` e
    `ax.axvline` para marcar o ponto e a linha vertical de estabilização, e
    `ax.set_title` / `ax.set_xlabel` / `ax.set_ylabel` / `ax.grid` para os
    textos e a grade de cada gráfico.
 
-7. **Exibe a figura no aplicativo** com `st.pyplot`.
+7. **Exibe as figuras no aplicativo** com `st.pyplot`.
 
 8. **Compara o estado final da simulação com os pontos de equilíbrio**
    calculados na Parte 1 (recalculados para os mesmos parâmetros atuais) e
    identifica de qual ponto o sistema mais se aproximou, com base na
-   distância entre o estado final e as coordenadas de cada ponto existente.
-   Com isso, monta o texto de interpretação exibido em **"Interpretação dos
-   resultados"**, logo abaixo dos gráficos.
+   distância relativa, em relação às capacidades suporte, entre o estado
+   final e as coordenadas de cada ponto existente: até 2% é considerado
+   proximidade e até 20%, aproximação. Com isso, monta o texto de
+   interpretação exibido em **"Interpretação dos resultados"**, logo abaixo
+   dos gráficos, que traz para cada população a tendência (aumento,
+   diminuição ou estabilidade), o valor final em número de indivíduos, o
+   tempo de estabilização e a variação percentual em relação ao valor
+   inicial.
         """
     )
 
@@ -1169,9 +1190,10 @@ elif pagina == "Aplicação em Várzea das Flores":
         "espelho d'água, **3,76×10⁶ m²**.\n"
         "- **Girinos**: concentram-se nas margens rasas por fatores como temperatura, "
         "oviposição, abrigo e alimento. Consideramos sua ocupação restrita a uma "
-        "**faixa litorânea de 0,75 m de largura** ao longo do perímetro do espelho "
-        "d'água, da qual apenas **50%** é efetivamente ocupada (distribuição não "
-        "uniforme na margem), resultando em **≈1,03×10⁴ m²**.\n"
+        "**faixa litorânea de 0,5 m de largura** ao longo do perímetro do espelho "
+        "d'água, da qual apenas **10%** é efetivamente ocupada (distribuição não "
+        "uniforme na margem), resultando em **≈1.375 m²** (≈0,04% do espelho "
+        "d'água).\n"
         "- **Sapos adultos e escorpiões-amarelos**: restritos à faixa de "
         "Área de Preservação Permanente (30 m ao redor do reservatório, "
         "aproximadamente **8,25×10⁵ m²**) pela preferência dos sapos de se manterem "
@@ -1184,7 +1206,7 @@ elif pagina == "Aplicação em Várzea das Flores":
         "represas dendríticas), o que resulta em um perímetro estimado de "
         "≈27.500 m. Esse perímetro é usado tanto para a faixa de APP de "
         "30 m (≈825.000 m², sapos e escorpiões) quanto para a faixa "
-        "litorânea de 0,75 m com 50% de ocupação (≈1,03×10⁴ m², girinos)."
+        "litorânea de 0,5 m com 10% de ocupação (≈1.375 m², girinos)."
     )
 
     st.markdown("---")
@@ -1266,11 +1288,12 @@ elif pagina == "Aplicação em Várzea das Flores":
 
     with st.expander("Parâmetros do modelo (valores da Tabela 2)"):
         st.caption(
-            "$d_a, d_g, d_s, d_e$ são as densidades máximas de referência "
-            "da Tabela 2 do artigo (indivíduos/m²); junto com a área real "
-            "de habitat na represa (fixada acima), determinam a "
-            "capacidade suporte $k_x = d_x \\times r_x$ de cada espécie — "
-            "não é o $k_x$ que deve ser informado aqui."
+            "$d_a, d_g, d_s, d_e, d_\\alpha, d_\\theta$ são as densidades de "
+            "referência da Tabela 2 do artigo (indivíduos/m²); junto com a "
+            "área real de habitat na represa (fixada acima), determinam os "
+            "valores absolutos usados no modelo: $k_x = d_x \\cdot r_x$, "
+            "$\\alpha = d_\\alpha \\cdot r_a$ e $\\theta = d_\\theta \\cdot r_e$ "
+            "— não são esses valores absolutos que devem ser informados aqui."
         )
         q1, q2, q3 = st.columns(3)
         with q1:
@@ -1290,17 +1313,25 @@ elif pagina == "Aplicação em Várzea das Flores":
         with q3:
             mu_s_vz = st.number_input(rotulo("mu_s"), value=DEFAULTS["mu_s"], format="%.6f", key="mu_s_vz")
             delta_vz = st.number_input(rotulo("delta"), value=DEFAULTS["delta"], format="%.6e", key="delta_vz")
-            alpha_vz = st.number_input(rotulo("alpha"), min_value=1e-9, value=DEFAULTS["alpha"], format="%.6g", key="alpha_vz")
+            alpha_vz = st.number_input(ROTULO_D_ALPHA, min_value=1e-9, value=DEFAULTS["alpha"], format="%.6g", key="alpha_vz", help=HELP_D_ALPHA)
             beta_vz = st.number_input(rotulo("beta"), value=DEFAULTS["beta"], format="%.6f", key="beta_vz")
-        theta_vz = st.number_input(rotulo("theta"), value=DEFAULTS["theta"], format="%.6g", key="theta_vz")
+        theta_vz = st.number_input(ROTULO_D_THETA, value=DEFAULTS["theta"], format="%.6g", key="theta_vz", help=HELP_D_THETA)
 
     st.subheader("Tempo de simulação")
     t_max_vz = st.slider("Duração máxima da simulação (ano(s))", min_value=1, max_value=100,
                           value=20, key="t_max_vz")
 
-    dim_vz = dict(n_a=n_a_vz, n_g=n_g_vz, n_e=n_e_vz, k_a=d_a_vz, k_g=d_g_vz, k_s=d_s_vz,
-                  k_e=d_e_vz, mu_a=mu_a_vz, mu_s=mu_s_vz, delta=delta_vz, alpha=alpha_vz,
-                  beta=beta_vz, theta=theta_vz)
+    # Parâmetros dimensionais absolutos: k_x = d_x * r_x, alpha = d_alpha * r_a,
+    # theta = d_theta * r_e (mesma conversão da página "Simulações Numéricas").
+    dim_vz = dict(n_a=n_a_vz, n_g=n_g_vz, n_e=n_e_vz,
+                  k_a=d_a_vz * AREA_HABITAT_VZ["A"],
+                  k_g=d_g_vz * AREA_HABITAT_VZ["G"],
+                  k_s=d_s_vz * AREA_HABITAT_VZ["S"],
+                  k_e=d_e_vz * AREA_HABITAT_VZ["E"],
+                  mu_a=mu_a_vz, mu_s=mu_s_vz, delta=delta_vz,
+                  alpha=alpha_vz * AREA_HABITAT_VZ["A"],
+                  beta=beta_vz,
+                  theta=theta_vz * AREA_HABITAT_VZ["E"])
 
     rodar_vz = st.button("Rodar simulação", type="primary", key="rodar_vz")
 
@@ -1441,7 +1472,7 @@ else:
     st.markdown(
         "A capacidade suporte de cada espécie é calculada a "
         "partir da densidade máxima e da "
-        "área informada. \\ Internamente, o "
+        "área informada. Internamente, o "
         "sistema é sempre resolvido na forma **adimensional**. Os "
         "resultados são então apresentados em dois formatos: **adimensional** "
         "(cada população em relação à própria capacidade suporte, o que permite"
@@ -1563,15 +1594,15 @@ else:
 
     with st.expander("Parâmetros do modelo"):
             st.caption(
-                "$d_a, d_g, d_s, d_e$ são as densidades máximas de "
+                "$d_a, d_g, d_s, d_e, d_\\alpha, d_\\theta$ são as densidades de "
                 "referência da Tabela 2 do artigo (indivíduos/m²); junto "
-                "com a área $r_x$ definida acima, determinam a capacidade "
-                "suporte $k_x = d_x \\times r_x$ de cada espécie. Os "
-                "demais parâmetros ($\\alpha, \\theta$ incluídos) não "
-                "reaparecem diretamente nos gráficos (ver explicação "
-                "acima) — são usados apenas para calcular corretamente as "
-                "razões adimensionais do modelo ($\\bar{k}, \\bar{\\alpha}, "
-                "\\bar{\\beta}, \\bar{\\theta}$)."
+                "com a área $r_x$ definida acima, determinam os valores "
+                "absolutos usados no modelo: $k_x = d_x \\cdot r_x$, "
+                "$\\alpha = d_\\alpha \\cdot r_a$ e $\\theta = d_\\theta \\cdot r_e$. "
+                "Os demais parâmetros não reaparecem diretamente nos "
+                "gráficos (ver explicação acima) — são usados apenas para "
+                "calcular corretamente as razões adimensionais do modelo "
+                "($\\bar{k}, \\bar{\\alpha}, \\bar{\\beta}, \\bar{\\theta}$)."
             )
             p1, p2, p3 = st.columns(3)
             with p1:
@@ -1591,9 +1622,9 @@ else:
             with p3:
                 mu_s = st.number_input(rotulo("mu_s"), value=DEFAULTS["mu_s"], format="%.6f")
                 delta = st.number_input(rotulo("delta"), value=DEFAULTS["delta"], format="%.6e")
-                alpha = st.number_input(rotulo("alpha"), min_value=1e-9, value=DEFAULTS["alpha"], format="%.6f")
+                alpha = st.number_input(ROTULO_D_ALPHA, min_value=1e-9, value=DEFAULTS["alpha"], format="%.6f", help=HELP_D_ALPHA)
                 beta = st.number_input(rotulo("beta"), value=DEFAULTS["beta"], format="%.6f")
-            theta = st.number_input(rotulo("theta"), value=DEFAULTS["theta"], format="%.6f")
+            theta = st.number_input(ROTULO_D_THETA, value=DEFAULTS["theta"], format="%.6f", help=HELP_D_THETA)
 
     # -- capacidade suporte k_x = d_x * r_x, e alpha/theta também
     #    convertidos para valores absolutos (alpha = d_alpha*r_a,
@@ -1637,11 +1668,12 @@ else:
             st.error("As áreas (r_a, r_g, r_s, r_e) devem ser positivas.")
             st.stop()
 
-        # -- 1. converte parâmetros para adimensional. Como dim já usa as
-        #      capacidades suporte absolutas (k_x_abs = d_x * r_x), p sai
-        #      idêntico ao que se obteria com as densidades puras (a área
-        #      se cancela nas razões), então serve tanto para a integração
-        #      quanto para a análise de equilíbrio/estabilidade.
+        # -- 1. converte parâmetros para adimensional. dim já usa os valores
+        #      absolutos (k_x = d_x * r_x, alpha = d_alpha * r_a,
+        #      theta = d_theta * r_e), então as áreas entram em
+        #      k = k_s/k_g e beta = beta*k_s/n_a (os demais parâmetros
+        #      adimensionais não dependem das áreas). p serve tanto para a
+        #      integração quanto para a análise de equilíbrio/estabilidade.
         p = adimensionaliza_parametros(dim)
 
         # -- 2. resolve o sistema ADIMENSIONAL: a densidade inicial
